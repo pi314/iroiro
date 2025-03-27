@@ -13,6 +13,7 @@ from .lib_regex import rere
 from .lib_math import resample
 from .lib_math import is_uint8
 from .lib_itertools import lookahead
+from .lib_tui import getch
 
 
 errors = []
@@ -546,19 +547,4 @@ def main_tile(args):
 
     sys.stdout.flush()
 
-    if not args.lines:
-        import termios, tty
-        import os
-        import select
-
-        fd = sys.stdin.fileno()
-        orig_term_attr = termios.tcgetattr(fd)
-        when = termios.TCSADRAIN
-
-        try:
-            tty.setraw(fd, when=when)
-            select.select([fd], [], [], None)[0]
-
-        finally:
-            print('\r\n')
-            termios.tcsetattr(fd, when, orig_term_attr)
+    getch()
