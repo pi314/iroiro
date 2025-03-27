@@ -716,13 +716,23 @@ class TestGetch(TestCase):
         with self.raises(ValueError):
             register_key('')
 
-    def test_register_key(self):
+    def test_register_key_with_key_object(self):
+        new_key = type(KEY_UP)(r'\033[[[[[[', 'wow')
+        nkey = register_key(new_key, 'wah', 'haha')
+        self.eq(new_key.seq, nkey.seq)
+        self.eq(new_key, 'wow')
+        self.eq(nkey, 'wah')
+        self.eq(nkey, 'haha')
+        self.eq(deregister_key(new_key), new_key)
+
+    def test_register_deregister_key(self):
         self.eq(getch(), None)
         self.press('測試')
         self.eq(getch(), '測')
         self.eq(getch(), '試')
         self.eq(getch(), None)
 
+        # Resigter keys
         TE = register_key('測'.encode('utf8'), 'TE')
         ST = register_key('試'.encode('utf8'), 'ST')
         ABCD = register_key('\033ABCD', 'ABCD')
@@ -737,6 +747,20 @@ class TestGetch(TestCase):
         self.eq(getch(), TE)
         self.eq(getch(), ST)
         self.eq(getch(), 'ABCD')
+        self.eq(getch(), None)
+
+        # Deresigter keys
+        TE = deregister_key(TE)
+        ST = deregister_key(ST.seq)
+        ABCD = deregister_key('\033ABCD')
+
+        self.press('測試\033ABCD')
+        self.eq(getch(), TE)
+        self.eq(getch(), ST)
+        self.eq(getch(), '\33A')
+        self.eq(getch(), 'B')
+        self.eq(getch(), 'C')
+        self.eq(getch(), 'D')
         self.eq(getch(), None)
 
         MY_HOME = register_key(KEY_HOME.seq, 'MY_HOME')

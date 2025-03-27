@@ -448,7 +448,12 @@ del _init_key_table
 
 @export
 def register_key(seq, *aliases):
-    if isinstance(seq, str):
+    if isinstance(seq, Key):
+        new_key = seq
+        seq = new_key.seq
+        aliases = new_key.aliases + list(aliases)
+
+    elif isinstance(seq, str):
         seq = seq.encode('utf8')
 
     if not seq:
@@ -463,6 +468,15 @@ def register_key(seq, *aliases):
         key.nameit(name)
 
     return key
+
+
+@export
+def deregister_key(seq):
+    if isinstance(seq, Key):
+        seq = seq.seq
+    elif isinstance(seq, str):
+        seq = seq.encode('utf8')
+    return key_table.pop(seq, None)
 
 
 @export
