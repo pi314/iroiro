@@ -1,10 +1,6 @@
 import sys
 
-from . import lib_colors as paints
-
 from .lib_itertools import zip_longest, flatten
-from .lib_colors import decolor
-
 
 from .internal_utils import exporter
 export, __all__ = exporter()
@@ -13,6 +9,7 @@ export, __all__ = exporter()
 @export
 def strwidth(s):
     import unicodedata
+    from .lib_colors import decolor
     return sum((1 + (unicodedata.east_asian_width(c) in 'WF')) for c in decolor(s))
 
 

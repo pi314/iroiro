@@ -183,3 +183,29 @@ If user triggers `EOFError` or `KeyboardInterrupt`,
 it will be suppressed and make `yn` stores `None`.
 
 `yn.selected` stores the user input, so you could distinguish `yes` and `''`.
+
+
+## `getch()`
+
+Get a "key" from stdin without waiting for carriage return.
+
+This function is probably very platform dependent.
+
+__Parameters__
+```python
+getch(timeout=None, encoding='utf8')
+```
+
+
+## `register_key()`
+__Parameters__
+```python
+register_key(seq, *aliases)
+```
+
+
+## `deregister_key()`
+__Parameters__
+```python
+deregister_key(seq)
+```
