@@ -370,7 +370,7 @@ class Key:
     def __eq__(self, other):
         if type(self) == type(other):
             return self.seq == other.seq
-        elif self.seq == other:
+        elif isinstance(other, bytes) and self.seq == other:
             return True
         elif isinstance(other, str) and self.seq == other.encode('utf8'):
             return True
@@ -507,7 +507,7 @@ def getch(timeout=None, encoding='utf8'):
             if not has_data():
                 break
 
-            # Still have change to match in key table
+            # Still have chance to match in key table
             if candidate_matches:
                 # eliminate potential matches
                 candidate_matches = set(key_seq for key_seq in candidate_matches if key_seq.startswith(acc))
