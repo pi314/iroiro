@@ -208,10 +208,15 @@ Roughly speaking, it tries to match the longest sequence that is registered thro
 
 If none of them perfectly matches, it tries to get enough bytes that are decodable in `encoding`.
 
+*   `timeout` specifies the waiting time if stdin is empty
+    -   If stdin keep being empty during timeout, `None` is returned
+
+`timeout` only applies to the first check, not in between every byte reads.
+
 
 ## Class `Key`
 
-A class representing a key.
+A class representing a key ("character".)
 
 `Key.seq` stores the byte sequence of the key.
 
@@ -265,14 +270,42 @@ The following keys are pre-defined by warawara:
 
 
 ## `register_key()`
+
+Register a sequence with specified aliases.
+
 __Parameters__
 ```python
 register_key(seq, *aliases)
 ```
 
+`seq` could be in `bytes` or `str`; If it's `str`, `seq.encode('utf8')` is used.
+
+`aliases` are names in `str`, see [Key](#class-key) about how Key object treat them.
+
+The corresponding `Key` object, either newly created or a existing one, is returned.
+
+__Examples__
+```python
+key = register_key('abcd', 'ABCD')
+user_input = getch()
+```
+In the above example, you have to input `'abcd'` extremely fast for it to be detected.
+Or just paste `'abcd'` and hope it would work.
+
 
 ## `deregister_key()`
+
+Deregister a sequene from key table.
+
+The deregistered key object is returned.
+
 __Parameters__
 ```python
 deregister_key(seq)
+```
+
+__Examples__
+```python
+key = deregister_key(seq)
+assert key.seq == seq
 ```
