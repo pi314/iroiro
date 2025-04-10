@@ -1,8 +1,9 @@
 .PHONY: what
 what:
-	@echo $$ make run VERBOSE=1
+	@echo $$ make run [VERBOSE=1]
 	@echo $$ make clean
 	@echo $$ make htmldoc
+	@echo $$ make publish
 
 
 .PHONY: run
@@ -20,6 +21,21 @@ clean:
 
 	@echo $$ rm -rf dist/
 	@rm -rf dist/
+
+
+.PHONY: publish
+publish:
+	@echo Check git branch ... "$$(git branch --show-current)"
+	@[ "$$(git branch --show-current)" = "main" ]
+
+	@echo $$ hatch clean
+	@hatch clean
+
+	@echo $$ hatch build
+	@hatch build
+
+	@echo $$ hatch publish
+	@hatch publish
 
 
 # =============================================================================
