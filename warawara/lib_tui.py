@@ -1,10 +1,6 @@
 import sys
 
-from . import lib_colors as paints
-
 from .lib_itertools import zip_longest, flatten
-from .lib_colors import decolor
-
 
 from .internal_utils import exporter
 export, __all__ = exporter()
@@ -13,6 +9,7 @@ export, __all__ = exporter()
 @export
 def strwidth(s):
     import unicodedata
+    from .lib_colors import decolor
     return sum((1 + (unicodedata.east_asian_width(c) in 'WF')) for c in decolor(s))
 
 
@@ -336,3 +333,208 @@ def prompt(question, options=tuple(),
                     user_selection.select(i)
 
     return user_selection
+
+
+class Key:
+    def __init__(self, seq, *aliases):
+        if isinstance(seq, str):
+            seq = seq.encode('utf8')
+
+        if not isinstance(seq, bytes):
+            raise TypeError('seq should be in type bytes, not {}'.format(type(seq)))
+
+        if not all(isinstance(a, str) for a in aliases):
+            raise TypeError('Aliases should be in type str')
+
+        self.seq = seq
+        self.aliases = []
+        for name in aliases:
+            self.nameit(str(name))
+
+    def __hash__(self):
+        return hash(self.seq)
+
+    def __repr__(self):
+        fmt = type(self).__name__ + '({})'
+        if self.aliases:
+            return fmt.format(self.aliases[0])
+        try:
+            return fmt.format(repr(self.seq.decode('utf8')))
+        except UnicodeError:
+            return fmt.format(repr(self.seq))
+
+    def nameit(self, name):
+        if name not in self.aliases:
+            self.aliases.append(name)
+
+    def __eq__(self, other):
+        if type(self) == type(other):
+            return self.seq == other.seq
+        elif isinstance(other, bytes) and self.seq == other:
+            return True
+        elif isinstance(other, str) and self.seq == other.encode('utf8'):
+            return True
+        else:
+            return other in self.aliases
+
+
+KEY_ESCAPE = Key(b'\033', 'esc', 'escape')
+KEY_BACKSPACE = Key(b'\x7f', 'backspace')
+KEY_TAB = Key(b'\t', 'tab', 'ctrl-i', 'ctrl+i', '^I')
+KEY_ENTER = Key(b'\r', 'enter', 'ctrl-m', 'ctrl+m', '^M')
+KEY_SPACE = Key(b' ', 'space')
+
+KEY_UP = Key(b'\033[A', 'up')
+KEY_DOWN = Key(b'\033[B', 'down')
+KEY_RIGHT = Key(b'\033[C', 'right')
+KEY_LEFT = Key(b'\033[D', 'left')
+
+KEY_HOME = Key(b'\033[1~', 'home')
+KEY_END = Key(b'\033[4~', 'end')
+KEY_PGUP = Key(b'\033[5~', 'pgup', 'pageup')
+KEY_PGDN = Key(b'\033[6~', 'pgdn', 'pagedown')
+
+KEY_F1 = Key(b'\033OP', 'F1')
+KEY_F2 = Key(b'\033OQ', 'F2')
+KEY_F3 = Key(b'\033OR', 'F3')
+KEY_F4 = Key(b'\033OS', 'F4')
+KEY_F5 = Key(b'\033[15~', 'F5')
+KEY_F6 = Key(b'\033[17~', 'F6')
+KEY_F7 = Key(b'\033[18~', 'F7')
+KEY_F8 = Key(b'\033[19~', 'F8')
+KEY_F9 = Key(b'\033[20~', 'F9')
+KEY_F10 = Key(b'\033[21~', 'F10')
+KEY_F11 = Key(b'\033[23~', 'F11')
+KEY_F12 = Key(b'\033[24~', 'F12')
+
+def _register_ctrl_n_keys():
+    for c in 'abcdefghjklnopqrstuvwxyz':
+        C = c.upper()
+        idx = ord(c) - ord('a') + 1
+        aliases = ('ctrl-' + c, 'ctrl+' + c, '^' + C)
+        globals()['KEY_CTRL_' + C] = Key(chr(idx), *aliases)
+
+_register_ctrl_n_keys()
+del _register_ctrl_n_keys
+
+
+def _export_all_keys():
+    for key in globals().keys():
+        if key.startswith('KEY_'):
+            export(key)
+
+_export_all_keys()
+del _export_all_keys
+
+
+key_table = {}
+key_table_reverse = {}
+
+def _init_key_table():
+    for k, v in globals().items():
+        if not k.startswith('KEY_'):
+            continue
+        key_table[v.seq] = v
+
+        for alias in v.aliases:
+            key_table_reverse[alias] = v
+
+_init_key_table()
+del _init_key_table
+
+
+@export
+def register_key(seq, *aliases):
+    if isinstance(seq, Key):
+        new_key = seq
+        seq = new_key.seq
+        aliases = new_key.aliases + list(aliases)
+
+    elif isinstance(seq, str):
+        seq = seq.encode('utf8')
+
+    if not seq:
+        raise ValueError('huh?')
+
+    if seq not in key_table:
+        key_table[seq] = Key(seq, *aliases)
+        return key_table[seq]
+
+    key = key_table[seq]
+    for name in aliases:
+        key.nameit(name)
+
+    return key
+
+
+@export
+def deregister_key(seq):
+    if isinstance(seq, Key):
+        seq = seq.seq
+    elif isinstance(seq, str):
+        seq = seq.encode('utf8')
+    return key_table.pop(seq, None)
+
+
+@export
+def getch(timeout=None, encoding='utf8'):
+    import termios, tty
+    import os
+    import select
+
+    fd = sys.stdin.fileno()
+    orig_term_attr = termios.tcgetattr(fd)
+    when = termios.TCSADRAIN
+
+    def has_data(t=0):
+        return select.select([fd], [], [], t)[0]
+
+    def read_one_byte():
+        return os.read(sys.stdin.fileno(), 1)
+
+    try:
+        tty.setraw(fd, when=when)
+
+        # Wait for input until timeout
+        if not has_data(timeout):
+            return None
+
+        acc = b''
+        candidate_matches = set(key_table.keys())
+        while True:
+            acc += read_one_byte()
+
+            if not has_data():
+                break
+
+            # Still have chance to match in key table
+            if candidate_matches:
+                # eliminate potential matches
+                candidate_matches = set(key_seq for key_seq in candidate_matches if key_seq.startswith(acc))
+
+                # Perfect match, return
+                if candidate_matches == {acc}:
+                    break
+
+                # multiple prefix matchs: collect more byte
+                if candidate_matches:
+                    continue
+
+            # Input sequence does not match anything in key table
+            # Collect enough bytes to decode at least one unicode char
+            try:
+                acc.decode(encoding)
+                break
+            except UnicodeError:
+                continue
+
+        if acc in key_table:
+            return key_table[acc]
+
+        try:
+            return acc.decode(encoding)
+        except UnicodeError:
+            return acc
+
+    finally:
+        termios.tcsetattr(fd, when, orig_term_attr)

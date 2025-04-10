@@ -493,3 +493,277 @@ class TestPromotAskUser(TestCase):
         self.eq(yn, 'Coffee')
         self.eq(yn, 'COFFEE')
         self.ne(yn, 'tea')
+
+
+class TestKey(TestCase):
+    def test_builtin_key(self):
+        self.eq(KEY_ESCAPE, b'\033')
+        self.eq(KEY_ESCAPE, '\033')
+        self.eq(KEY_ESCAPE, 'esc')
+        self.eq(KEY_ESCAPE, 'escape')
+
+        self.eq(KEY_BACKSPACE, b'\x7f')
+        self.eq(KEY_BACKSPACE, 'backspace')
+
+        self.eq(KEY_TAB, b'\t')
+        self.eq(KEY_TAB, 'tab')
+        self.eq(KEY_TAB, 'ctrl-i')
+        self.eq(KEY_TAB, 'ctrl+i')
+        self.eq(KEY_TAB, '^I')
+
+        self.eq(KEY_ENTER, b'\r')
+        self.eq(KEY_ENTER, '\r')
+        self.eq(KEY_ENTER, 'enter')
+        self.eq(KEY_ENTER, 'ctrl-m')
+        self.eq(KEY_ENTER, 'ctrl+m')
+        self.eq(KEY_ENTER, '^M')
+
+        self.eq(KEY_SPACE, b' ')
+        self.eq(KEY_SPACE, ' ')
+        self.eq(KEY_SPACE, 'space')
+
+        self.eq(KEY_UP, b'\033[A')
+        self.eq(KEY_UP, '\033[A')
+        self.eq(KEY_UP, 'up')
+
+        self.eq(KEY_DOWN, b'\033[B')
+        self.eq(KEY_DOWN, '\033[B')
+        self.eq(KEY_DOWN, 'down')
+
+        self.eq(KEY_RIGHT, b'\033[C')
+        self.eq(KEY_RIGHT, '\033[C')
+        self.eq(KEY_RIGHT, 'right')
+
+        self.eq(KEY_LEFT, b'\033[D')
+        self.eq(KEY_LEFT, '\033[D')
+        self.eq(KEY_LEFT, 'left')
+
+        self.eq(KEY_HOME, b'\033[1~')
+        self.eq(KEY_HOME, '\033[1~')
+        self.eq(KEY_HOME, 'home')
+
+        self.eq(KEY_END, b'\033[4~')
+        self.eq(KEY_END, '\033[4~')
+        self.eq(KEY_END, 'end')
+
+        self.eq(KEY_PGUP, b'\033[5~')
+        self.eq(KEY_PGUP, '\033[5~')
+        self.eq(KEY_PGUP, 'pgup')
+        self.eq(KEY_PGUP, 'pageup')
+
+        self.eq(KEY_PGDN, b'\033[6~')
+        self.eq(KEY_PGDN, '\033[6~')
+        self.eq(KEY_PGDN, 'pgdn')
+        self.eq(KEY_PGDN, 'pagedown')
+
+        self.eq(KEY_F1, b'\033OP')
+        self.eq(KEY_F1, 'F1')
+
+        self.eq(KEY_F2, b'\033OQ')
+        self.eq(KEY_F2, 'F2')
+
+        self.eq(KEY_F3, b'\033OR')
+        self.eq(KEY_F3, 'F3')
+
+        self.eq(KEY_F4, b'\033OS')
+        self.eq(KEY_F4, 'F4')
+
+        self.eq(KEY_F5, b'\033[15~')
+        self.eq(KEY_F5, 'F5')
+
+        self.eq(KEY_F6, b'\033[17~')
+        self.eq(KEY_F6, 'F6')
+
+        self.eq(KEY_F7, b'\033[18~')
+        self.eq(KEY_F7, 'F7')
+
+        self.eq(KEY_F8, b'\033[19~')
+        self.eq(KEY_F8, 'F8')
+
+        self.eq(KEY_F9, b'\033[20~')
+        self.eq(KEY_F9, 'F9')
+
+        self.eq(KEY_F10, b'\033[21~')
+        self.eq(KEY_F10, 'F10')
+
+        self.eq(KEY_F11, b'\033[23~')
+        self.eq(KEY_F11, 'F11')
+
+        self.eq(KEY_F12, b'\033[24~')
+        self.eq(KEY_F12, 'F12')
+
+        for c in 'abcdefghjklnopqrstuvwxyz':
+            key = globals()['KEY_CTRL_' + c.upper()]
+            self.eq(key, chr(ord(c) - ord('a') + 1))
+            self.eq(key, 'ctrl-' + c)
+            self.eq(key, 'ctrl+' + c)
+            self.eq(key, '^' + c.upper())
+
+    def test_key_invalid_seq_and_alias(self):
+        Key = type(KEY_UP)
+        with self.raises(TypeError):
+            Key(['wah'], 'WAH')
+
+        with self.raises(TypeError):
+            Key('wah', ['WAH'])
+
+    def test_key_hash(self):
+        self.eq(hash(KEY_UP), hash(KEY_UP.seq))
+
+    def test_key_nameit(self):
+        Key = type(KEY_UP)
+        TEST_KEY = Key('test_key')
+        self.ne(TEST_KEY, 'wah')
+        TEST_KEY.nameit('wah')
+        self.eq(TEST_KEY, 'wah')
+        TEST_KEY.nameit('wah')
+        self.eq(TEST_KEY, 'wah')
+
+    def test_key_repr(self):
+        self.eq(repr(KEY_UP), 'Key(up)')
+
+        Key = type(KEY_UP)
+        new_key = Key('測')
+        self.eq(repr(new_key), r"Key('測')")
+
+        seq = '測'.encode('utf8')[:-2]
+        new_key2 = Key(seq)
+        self.eq(repr(new_key2), r'Key(' + repr(seq) + ')')
+
+
+class TestGetch(TestCase):
+    def setUp(self):
+        self.patch('sys.stdin.fileno', self.mock_stdin_fileno)
+        self.patch('select.select', self.mock_select)
+        self.patch('os.read', self.mock_read)
+        self.patch('tty.setraw', self.mock_setraw)
+        self.patch('termios.tcgetattr', self.mock_tcgetattr)
+        self.patch('termios.tcsetattr', self.mock_tcsetattr)
+        self.buffer = bytearray()
+        self.default_term_attr = [
+                'iflag', 'oflag', 'cflag', 'lflag',
+                'ispeed', 'ospeed',
+                'cc']
+
+        self.term_attr = list(self.default_term_attr)
+
+    def tearDown(self):
+        self.eq(self.term_attr, self.default_term_attr)
+
+    def press(self, key):
+        if isinstance(key, str):
+            key = key.encode('utf8')
+        self.buffer += key
+
+    def mock_stdin_fileno(self):
+        return 0
+
+    def mock_select(self, rlist, wlist, xlist, timeout=None):
+        self.eq(self.term_attr[0], 'raw')
+        if self.buffer:
+            return (rlist, [], [])
+        return ([], [], [])
+
+    def mock_read(self, fd, n):
+        self.eq(self.term_attr[0], 'raw')
+        ret = self.buffer[:n]
+        del self.buffer[:n]
+        return ret
+
+    def mock_setraw(self, fd, when=None):
+        import termios
+        self.eq(when, termios.TCSADRAIN)
+        self.term_attr = ['raw', 'raw', 'raw', 'raw', 'raw', 'raw', 'cc']
+
+    def mock_tcgetattr(self, fd):
+        return self.term_attr
+
+    def mock_tcsetattr(self, fd, when, attributes):
+        import termios
+        self.eq(when, termios.TCSADRAIN)
+        self.term_attr = attributes
+
+    def test_getch_basic(self):
+        self.eq(getch(), None)
+        self.press(b'abc')
+        self.eq(getch(), 'a')
+        self.eq(getch(), 'b')
+        self.eq(getch(), 'c')
+        self.eq(getch(), None)
+
+    def test_getch_unicode(self):
+        self.eq(getch(), None)
+        self.press('測試')
+        self.eq(getch(), '測')
+        self.eq(getch(), '試')
+        self.eq(getch(), None)
+
+    def test_getch_escape_keys(self):
+        self.eq(getch(), None)
+        self.press('\033[AA')
+        self.eq(getch(), 'up')
+        self.eq(getch(), 'A')
+        self.eq(getch(), None)
+
+    def test_getch_unicode_error(self):
+        self.eq(getch(), None)
+        test_data = '測'.encode('utf8')[:-1]
+        self.press(test_data)
+        self.eq(getch(), test_data)
+        self.eq(getch(), None)
+
+    def test_register_key_empty_seq(self):
+        with self.raises(ValueError):
+            register_key('')
+
+    def test_register_key_with_key_object(self):
+        new_key = type(KEY_UP)(r'\033[[[[[[', 'wow')
+        nkey = register_key(new_key, 'wah', 'haha')
+        self.eq(new_key.seq, nkey.seq)
+        self.eq(new_key, 'wow')
+        self.eq(nkey, 'wah')
+        self.eq(nkey, 'haha')
+        self.eq(deregister_key(new_key), new_key)
+
+    def test_register_deregister_key(self):
+        self.eq(getch(), None)
+        self.press('測試')
+        self.eq(getch(), '測')
+        self.eq(getch(), '試')
+        self.eq(getch(), None)
+
+        # Resigter keys
+        TE = register_key('測'.encode('utf8'), 'TE')
+        ST = register_key('試'.encode('utf8'), 'ST')
+        ABCD = register_key('\033ABCD', 'ABCD')
+        self.eq(TE, '測')
+        self.eq(TE, '測'.encode('utf8'))
+        self.eq(ST, '試')
+        self.eq(ST, '試'.encode('utf8'))
+        self.eq(ABCD, 'ABCD')
+        self.eq(ABCD, '\033ABCD')
+
+        self.press('測試\033ABCD')
+        self.eq(getch(), TE)
+        self.eq(getch(), ST)
+        self.eq(getch(), 'ABCD')
+        self.eq(getch(), None)
+
+        # Deresigter keys
+        TE = deregister_key(TE)
+        ST = deregister_key(ST.seq)
+        ABCD = deregister_key('\033ABCD')
+
+        self.press('測試\033ABCD')
+        self.eq(getch(), TE)
+        self.eq(getch(), ST)
+        self.eq(getch(), '\33A')
+        self.eq(getch(), 'B')
+        self.eq(getch(), 'C')
+        self.eq(getch(), 'D')
+        self.eq(getch(), None)
+
+        MY_HOME = register_key(KEY_HOME.seq, 'MY_HOME')
+        self.eq(MY_HOME, KEY_HOME)
+        self.press(KEY_HOME.seq)
+        self.eq(getch(), MY_HOME)
