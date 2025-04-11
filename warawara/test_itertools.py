@@ -61,17 +61,22 @@ class TestItertools(TestCase):
                 )
 
     def test_lookahead(self):
-        data = []
-        for val, is_last in lookahead([1, 2, 3, 4, 5]):
-            data.append((val, is_last))
-
-        self.eq(data, [
+        data = [1, 2, 3, 4, 5]
+        self.eq([(val, is_last) for val, is_last in lookahead(data)], [
             (1, False),
             (2, False),
             (3, False),
             (4, False),
             (5, True),
             ])
+
+        data = [1]
+        self.eq([(val, is_last) for val, is_last in lookahead(data)], [
+            (1, True),
+            ])
+
+        data = []
+        self.eq([(val, is_last) for val, is_last in lookahead(data)], [])
 
     def test_zip_longest(self):
         self.eq(

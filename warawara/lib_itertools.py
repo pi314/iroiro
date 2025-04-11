@@ -60,7 +60,10 @@ def flatten(tree):
 @export
 def lookahead(iterable):
     it = iter(iterable)
-    lookahead = next(it)
+    try:
+        lookahead = next(it)
+    except StopIteration:
+        return
 
     for val in it:
         yield lookahead, False
