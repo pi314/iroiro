@@ -12,10 +12,40 @@ from warawara import *
 
 
 class TestTypesettingUtils(TestCase):
+    def test_charwidth(self):
+        self.eq(charwidth('t'), 1)
+        self.eq(charwidth('哇'), 2)
+        self.eq(charwidth('嗚'), 2)
+        self.eq(charwidth('😂'), 2)
+
+        with self.raises(TypeError):
+            charwidth('test')
+
     def test_strwidth(self):
         self.eq(strwidth('test'), 4)
         self.eq(strwidth(orange('test')), 4)
         self.eq(strwidth('哇嗚'), 4)
+
+    def test_wrap(self):
+        self.eq(wrap('嗚啦呀哈', 1), ('', '嗚啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 2), ('嗚', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 3), ('嗚', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 4), ('嗚啦', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 5), ('嗚啦', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 6), ('嗚啦呀', '哈'))
+        self.eq(wrap('嗚啦呀哈', 7), ('嗚啦呀', '哈'))
+        self.eq(wrap('嗚啦呀哈', 8), ('嗚啦呀哈', ''))
+        self.eq(wrap('嗚啦呀哈', 9), ('嗚啦呀哈', ''))
+
+        self.eq(wrap('嗚啦呀哈', 1, clip='>'), ('>', '嗚啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 2, clip='>'), ('嗚', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 3, clip='>'), ('嗚>', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 4, clip='>'), ('嗚啦', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 5, clip='>'), ('嗚啦>', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 6, clip='>'), ('嗚啦呀', '哈'))
+        self.eq(wrap('嗚啦呀哈', 7, clip='>'), ('嗚啦呀>', '哈'))
+        self.eq(wrap('嗚啦呀哈', 8, clip='>'), ('嗚啦呀哈', ''))
+        self.eq(wrap('嗚啦呀哈', 9, clip='>'), ('嗚啦呀哈', ''))
 
     def test_ljust_str(self):
         self.eq(ljust('test', 10), 'test      ')

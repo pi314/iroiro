@@ -7,10 +7,33 @@ export, __all__ = exporter()
 
 
 @export
-def strwidth(s):
+def charwidth(c):
     import unicodedata
+    return 1 + (unicodedata.east_asian_width(c) in 'WF')
+
+
+@export
+def strwidth(s):
     from .lib_colors import decolor
-    return sum((1 + (unicodedata.east_asian_width(c) in 'WF')) for c in decolor(s))
+    return sum(charwidth(c) for c in decolor(s))
+
+
+@export
+def wrap(s, width, clip=None):
+    if clip is None:
+        pass
+    elif not isinstance(clip, str) or (len(clip) != 1) or (charwidth(clip) != 1):
+        raise ValueError('clip should be a single width char')
+
+    w = 0
+    for idx, char in enumerate(s):
+        cw = charwidth(char)
+        if w + cw > width:
+            if clip and w + 1 <= width:
+                return (s[:idx] + clip, s[idx:])
+            return (s[:idx], s[idx:])
+        w += cw
+    return (s, '')
 
 
 def lpad(text, padding):
@@ -565,9 +588,8 @@ class Canvas:
         self.dirty[idx] = True
 
     def render(self, wipe=None):
-        # import shutil
-        # shutil.get_terminal_size().lines
-        # print(self.lines, self.alloc)
+        import shutil
+        width = shutil.get_terminal_size().columns
 
         from warawara import lookahead
 
@@ -575,10 +597,8 @@ class Canvas:
             print('\r\033[{}A'.format(self.alloc - 1), end='')
 
         for (idx, line), is_last in lookahead(enumerate(self.lines)):
-            if is_last:
-                print('\r\033[K{} lines={}'.format(line, len(self.lines)), end='')
-            else:
-                print('\r\033[K{} lines={}'.format(line, len(self.lines)))
+            print('\r\033[K{}'.format(wrap(line, width)[0]),
+                  end='' if is_last else None)
 
             self.alloc = max(self.alloc, idx + 1)
             self.dirty[idx] = False
