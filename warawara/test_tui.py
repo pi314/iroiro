@@ -47,6 +47,15 @@ class TestTypesettingUtils(TestCase):
         self.eq(wrap('嗚啦呀哈', 8, clip='>'), ('嗚啦呀哈', ''))
         self.eq(wrap('嗚啦呀哈', 9, clip='>'), ('嗚啦呀哈', ''))
 
+        with self.raises(ValueError):
+            wrap('whatever', 1, clip=1)
+
+        with self.raises(ValueError):
+            wrap('whatever', 1, clip='wa')
+
+        with self.raises(ValueError):
+            wrap('whatever', 1, clip='蛤')
+
     def test_ljust_str(self):
         self.eq(ljust('test', 10), 'test      ')
         self.eq(rjust('test', 10), '      test')
