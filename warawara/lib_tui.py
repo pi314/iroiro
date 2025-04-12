@@ -564,10 +564,8 @@ def getch(timeout=None, encoding='utf8'):
 
 
 @export
-class Canvas:
+class PseudoCanvas:
     def __init__(self):
-        self.height = None
-        self.width = None
         self.lines = []
         self.dirty = []
         self.alloc = 0
@@ -576,29 +574,50 @@ class Canvas:
         self.lines.append(line)
         self.dirty.append(True)
 
+    @property
+    def empty(self):
+        return not self.lines
+
+    def __len__(self):
+        return len(self.lines)
+
+    def __iter__(self):
+        return iter(self.lines)
+
     def __getitem__(self, idx):
         return self.lines[idx]
 
     def __setitem__(self, idx, line):
-        if len(self.lines) <= idx:
-            for i in range(len(self.lines), idx + 1):
-                self.append()
-
         self.lines[idx] = line
         self.dirty[idx] = True
 
-    def render(self, wipe=None):
+    def render(self, *, all=None):
+        if self.empty:
+            return
+
         import shutil
-        width = shutil.get_terminal_size().columns
+        term_size = shutil.get_terminal_size()
+        width = term_size.columns
+        height = term_size.lines
 
-        from warawara import lookahead
+        cursor = max(self.alloc - 1, 0)
 
-        if self.alloc > 1:
-            print('\r\033[{}A'.format(self.alloc - 1), end='')
-
+        from .lib_itertools import lookahead
         for (idx, line), is_last in lookahead(enumerate(self.lines)):
+            # Skip non-dirty lines
+            if not self.dirty[idx] and not all:
+                continue
+
+            # Align cursor position
+            if cursor != idx:
+                print('\r\033[{}{}'.format(abs(cursor - idx), 'A' if cursor > idx else 'B'), end='')
+
+            # Print content onto screen
             print('\r\033[K{}'.format(wrap(line, width)[0]),
                   end='' if is_last else None)
+
+            # Estimate cursor position
+            cursor = idx + (not is_last)
 
             self.alloc = max(self.alloc, idx + 1)
             self.dirty[idx] = False
