@@ -597,15 +597,19 @@ class PseudoCanvas:
 
         import shutil
         term_size = shutil.get_terminal_size()
-        width = term_size.columns
-        height = term_size.lines
+        term_width = term_size.columns
+        term_height = term_size.lines
 
         cursor = max(self.alloc - 1, 0)
 
         from .lib_itertools import lookahead
         for (idx, line), is_last in lookahead(enumerate(self.lines)):
-            # Skip non-dirty lines
-            if not self.dirty[idx] and not all:
+            # Skip non-dirty lines, but always redraw the last line
+            if not self.dirty[idx] and not all and not is_last:
+                continue
+
+            # Skip out-of-screen lines
+            if len(self) > term_height and idx < len(self) - term_height:
                 continue
 
             # Align cursor position
@@ -613,7 +617,7 @@ class PseudoCanvas:
                 print('\r\033[{}{}'.format(abs(cursor - idx), 'A' if cursor > idx else 'B'), end='')
 
             # Print content onto screen
-            print('\r\033[K{}'.format(wrap(line, width)[0]),
+            print('\r\033[K{}'.format(wrap(line, term_width)[0]),
                   end='' if is_last else None)
 
             # Estimate cursor position
