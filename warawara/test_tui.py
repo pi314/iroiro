@@ -4,8 +4,6 @@ import functools
 import threading
 import unittest.mock
 
-from collections import namedtuple
-
 from .lib_test_utils import *
 
 from warawara import *
@@ -202,6 +200,7 @@ def queue_to_list(Q):
 
 
 class TestThreadedSpinner(TestCase):
+    from collections import namedtuple
     Event = namedtuple('Event',
                        ('timestamp', 'tag', 'args', 'callback'),
                        defaults=(None, None, None, None))
@@ -796,7 +795,7 @@ class TestGetch(TestCase):
         self.press('測試\033ABCD')
         self.eq(getch(), TE)
         self.eq(getch(), ST)
-        self.eq(getch(), '\33A')
+        self.eq(getch(), '\033A')
         self.eq(getch(), 'B')
         self.eq(getch(), 'C')
         self.eq(getch(), 'D')
@@ -806,3 +805,22 @@ class TestGetch(TestCase):
         self.eq(MY_HOME, KEY_HOME)
         self.press(KEY_HOME.seq)
         self.eq(getch(), MY_HOME)
+
+
+class TestPseudoCanvas(TestCase):
+    def test_data_storing(self):
+        pc = PseudoCanvas()
+        self.true(pc.empty)
+
+        pc.append('wah1')
+        pc.append('wah2')
+        pc.append('wah3')
+        self.eq(len(pc), 3)
+        self.false(pc.empty)
+
+        self.eq(
+                [line for line in iter(pc)],
+                pc.lines,
+                )
+
+        self.eq(pc[1], 'wah2')
