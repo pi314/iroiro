@@ -183,7 +183,7 @@ class FakeTerminalCursor:
     def __eq__(self, other):
         return (self.y, self.x) == other
 
-    def __repr__(self):
+    def __repr__(self): # pragma: no cover
         return 'Cursor(y={}, x={}, attr={})'.format(self.y, self.x, repr(self.attr))
 
 
@@ -202,7 +202,7 @@ class FakeTerminal:
         self.seq = ''
 
     def __getitem__(self, idx):
-        return ''.join(cell.char for cell in self.canvas[idx] if cell is not None)
+        return ''.join(cell.char for cell in self.canvas[idx] if cell is not None).rstrip(' ')
 
     def __len__(self):
         return len(self.canvas)
@@ -276,9 +276,6 @@ class FakeTerminal:
 
         self.cursor.x += cell.width
 
-    def setline(self, y, text):
-        self.canvas[y] = text
-
     def check_control_seq(self):
         m = rere(self.seq)
 
@@ -296,18 +293,28 @@ class FakeTerminal:
             self.cursor.x = 0
             self.cursor.y += 1
 
-        elif m.fullmatch('\033' + r'\[(\d?)([AB])'):
+        elif m.fullmatch('\033' + r'\[(\d*)([AB])'):
             # move cursor up/down
             direction = (1 if m.group(2) == 'B' else -1)
             self.cursor.y += int(m.group(1) or 1) * direction
 
-        elif m.fullmatch('\033' + r'\[(\d?)([CD])'):
+        elif m.fullmatch('\033' + r'\[(\d*)([CD])'):
             # move cursor right/left
             direction = (1 if m.group(2) == 'C' else -1)
             self.cursor.x += int(m.group(1) or 1) * direction
 
+        elif self.seq == '\033[H':
+            self.cursor.y = 0
+            self.cursor.x = 0
+
+        elif m.fullmatch('\033' + r'\[(\d*);(\d*)H'):
+            self.cursor.y = int(m.group(1) or 1) - 1
+            self.cursor.x = int(m.group(2) or 1) - 1
+
         elif self.seq == '\033[K':
-            self.setline(self.cursor.y, self.canvas[self.cursor.y][:self.cursor.x])
+            self.canvas[self.cursor.y] = self.canvas[self.cursor.y][:self.cursor.x]
+            if self.cursor.x > 0 and self.canvas[self.cursor.y][-1].width == 2:
+                self.canvas[self.cursor.y][-1] = FakeTerminalCell(' ')
 
         else:
             if self.seq and self.seq.startswith('\033') and self.seq[-1].upper() in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':

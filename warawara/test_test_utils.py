@@ -202,6 +202,12 @@ class TestFakeTerminal(TestCase):
         with self.raises(ValueError):
             wara.FakeTerminal(lines=-1)
 
+    def test_init(self):
+        ft = wara.FakeTerminal()
+        self.eq(ft, [''])
+        self.eq(ft.lines, [''])
+        self.eq(ft.cursor, (0, 0))
+
     def test_auto_size(self):
         ft = wara.FakeTerminal(columns=0, lines=0)
         ft.print('ABCD')
@@ -209,10 +215,106 @@ class TestFakeTerminal(TestCase):
         self.eq(ft.get_terminal_size().lines, 3)
         self.eq(ft.get_terminal_size().columns, 5)
 
-    def test_basic(self):
+    def test_escape_seq_reset(self):
         ft = wara.FakeTerminal()
-        self.eq(ft, [''])
+        text = 'occuboinkal'
+        ft.puts(text)
+        self.eq(ft.lines, [text])
+        self.eq(ft.cursor.x, len(text))
+        ft.puts('\033c')
+        self.eq(ft.lines, [''])
+        self.eq(ft.cursor.x, 0)
+
+    def test_escape_seq_carriage_return_and_newline(self):
+        ft = wara.FakeTerminal()
+        text = 'occuboinkal'
+        ft.puts(text)
+        self.eq(ft.lines, [text])
+        self.eq(ft.cursor.x, len(text))
+        ft.puts('\r')
+        self.eq(ft.cursor.x, 0)
+        ft.puts('\n' + text + 'ly')
+        self.eq(ft.lines, [text, text + 'ly'])
+        self.eq(ft.cursor.y, 1)
+        self.eq(ft.cursor.x, len(text) + 2)
+
+    def test_escape_seq_cursorpos(self):
+        ft = wara.FakeTerminal()
+        text = 'occuboinkal'
+        ft.puts('\n'.join([text, text, text, text, text]))
+        self.eq(ft.lines, [text, text, text, text, text])
+        self.ne(ft.cursor.y, 0)
+        self.ne(ft.cursor.x, 0)
+
+        ft.puts('\033[H')
+        self.eq(ft.cursor.y, 0)
+        self.eq(ft.cursor.x, 0)
+
+        ft.puts('\033[3;7H')
+        self.eq(ft.cursor.y, 2)
+        self.eq(ft.cursor.x, 6)
+
+        ft.puts('\033[A')
+        self.eq(ft.cursor.y, 1)
+        self.eq(ft.cursor.x, 6)
+
+        ft.puts('\033[2A')
+        self.eq(ft.cursor.y, 0)
+        self.eq(ft.cursor.x, 6)
+
+        ft.puts('\033[C')
+        self.eq(ft.cursor.y, 0)
+        self.eq(ft.cursor.x, 7)
+
+        ft.puts('\033[2C')
+        self.eq(ft.cursor.y, 0)
+        self.eq(ft.cursor.x, 9)
+
+        ft.puts('\033[B')
+        self.eq(ft.cursor.y, 1)
+        self.eq(ft.cursor.x, 9)
+
+        ft.puts('\033[2B')
+        self.eq(ft.cursor.y, 3)
+        self.eq(ft.cursor.x, 9)
+
+        ft.puts('\033[D')
+        self.eq(ft.cursor.y, 3)
+        self.eq(ft.cursor.x, 8)
+
+        ft.puts('\033[5D')
+        self.eq(ft.cursor.y, 3)
+        self.eq(ft.cursor.x, 3)
+
+    def test_escape_seq_cleareol(self):
+        ft = wara.FakeTerminal()
+        text = 'occuboinkal'
+        ft.puts('\n'.join([text, text, text, text, text]))
+        ft.puts('\033[3;7H')
+        self.eq(ft.lines, [text, text, text, text, text])
+        self.eq(ft.cursor.y, 2)
+        self.eq(ft.cursor.x, 6)
+
+        ft.puts('\033[K')
+        self.eq(ft.cursor.y, 2)
+        self.eq(ft.cursor.x, 6)
+        self.eq(ft.lines, [text, text, 'occubo', text, text])
+
+        ft.puts('\r嗚啦呀哈')
+        self.eq(ft.lines[2], '嗚啦呀哈')
+
+        ft.puts('\033[3D\033[K')
+        self.eq(ft.cursor.x, 5)
+        self.eq(ft.lines[2], '嗚啦')
+
+    def test_escape_seq_unknown_seq(self):
+        ft = wara.FakeTerminal()
+        ft.puts('\033$%#^&*(a')
+        self.eq(ft.lines, [''])
         self.eq(ft.cursor, (0, 0))
+
+    def test_basic_output(self):
+        ft = wara.FakeTerminal()
 
         ft.puts('ABCD\nEF')
         self.eq(ft[0], 'ABCD')
@@ -223,33 +325,34 @@ class TestFakeTerminal(TestCase):
         self.eq(ft.lines, ['ABCD', 'GH'])
         self.eq(ft.cursor, (1, 2))
 
-        ft.puts('\033[AIJKL')
-        self.eq(ft.lines, ['ABIJKL', 'GH'])
-        self.eq(ft.cursor, (0, 6))
-
     def test_wide_chars(self):
         ft = wara.FakeTerminal()
 
-        ft.puts('ABCD\nEF')
-        self.eq(ft[0], 'ABCD')
-        self.eq(ft[1], 'EF')
-        self.eq(ft.cursor, (1, 2))
+        ft.puts('嗚  拉')
+        self.eq(ft[0], '嗚  拉')
+        self.eq(ft.cursor, (0, 6))
 
-        ft.puts('\r哇啊')
-        self.eq(ft.lines, ['ABCD', '哇啊'])
-        self.eq(ft.cursor, (1, 4))
+        ft.puts('\r\033[C')
+        self.eq(ft.cursor, (0, 1))
 
-        ft.puts('\033[3D.')
-        self.eq(ft.lines, ['ABCD', ' .啊'])
-        self.eq(ft.cursor, (1, 2))
-
-        ft.puts('\033[A\r.嗚')
-        self.eq(ft.lines, ['.嗚D', ' .啊'])
+        ft.puts('呀')
+        self.eq(ft[0], ' 呀 拉')
         self.eq(ft.cursor, (0, 3))
 
-        ft.puts('\033[B呀')
-        self.eq(ft.lines, ['.嗚D', ' . 呀'])
-        self.eq(ft.cursor, (1, 5))
+        ft.puts('哈')
+        self.eq(ft[0], ' 呀哈')
+        self.eq(ft.cursor, (0, 5))
+
+        ft.puts('\033[3D')
+        self.eq(ft.cursor, (0, 2))
+
+        ft.puts('.')
+        self.eq(ft[0], '  .哈')
+        self.eq(ft.cursor, (0, 3))
+
+        ft.puts('#')
+        self.eq(ft[0], '  .#')
+        self.eq(ft.cursor, (0, 4))
 
     def test_puts_over_line_end(self):
         ft = wara.FakeTerminal()
