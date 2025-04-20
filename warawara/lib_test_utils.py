@@ -6,6 +6,9 @@ from .internal_utils import exporter
 export, __all__ = exporter()
 
 
+from .lib_regex import rere
+
+
 @export
 class Checkpoint:
     def __init__(self, testcase):
@@ -155,3 +158,166 @@ class RunMocker:
                     env=env)
         p.run(wait=wait)
         return p
+
+
+class FakeTerminalCell:
+    def __init__(self, char, attr=None):
+        self.char = char
+        self.attr = attr
+
+    @property
+    def width(self):
+        from .lib_tui import charwidth
+        return charwidth(self.char)
+
+
+class FakeTerminalCursor:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.y = 0
+        self.x = 0
+        self.attr = None
+
+    def __eq__(self, other):
+        return (self.y, self.x) == other
+
+    def __repr__(self):
+        return 'Cursor(y={}, x={}, attr={})'.format(self.y, self.x, repr(self.attr))
+
+
+@export
+class FakeTerminal:
+    def __init__(self, *, columns=80, lines=24):
+        if columns < 0:
+            raise ValueError('columns must >= 0')
+        if lines < 0:
+            raise ValueError('lines must >= 0')
+        self.width = columns
+        self.height = lines
+        self.canvas = [[]]
+        self.cursor = FakeTerminalCursor()
+
+        self.seq = ''
+
+    def __getitem__(self, idx):
+        return ''.join(cell.char for cell in self.canvas[idx] if cell is not None)
+
+    def __len__(self):
+        return len(self.canvas)
+
+    def __eq__(self, other):
+        return self.lines == other
+
+    @property
+    def lines(self):
+        return [self[idx] for idx in range(len(self))]
+
+    def reset(self):
+        self.canvas = [[]]
+        self.cursor.reset()
+
+    def get_terminal_size(self):
+        from os import terminal_size
+        return terminal_size((
+            self.width or max(len(line) for line in self),
+            self.height or len(self.canvas)
+            ))
+
+    def ensure_cursor_pos(self):
+        from .lib_math import clamp
+        self.cursor.y = clamp(0, self.cursor.y, self.height or self.cursor.y)
+        self.cursor.x = clamp(0, self.cursor.x, self.width or self.cursor.x)
+
+        # Ensure canvas has enough lines
+        while self.cursor.y >= len(self.canvas):
+            self.canvas.append([])
+
+    def print(self, *args, sep=' ', end='\n', **kwargs):
+        self.puts(sep.join(str(arg) for arg in args) + end)
+
+    def puts(self, text):
+        for char in text:
+            self.seq += char
+            if self.check_control_seq():
+                continue
+            if self.seq and self.seq.isprintable():
+                self.putc(self.seq)
+                self.seq = ''
+
+    def putc(self, char):
+        cell = FakeTerminalCell(char)
+
+        self.ensure_cursor_pos()
+
+        # Make sure canvas is wide enough
+        # Pre-fill spaces to make index-calculation easier
+        for i in range(len(self.canvas[self.cursor.y]), self.cursor.x + cell.width):
+            self.canvas[self.cursor.y].append(FakeTerminalCell(' '))
+
+        current_line = self.canvas[self.cursor.y]
+        current_char = self.canvas[self.cursor.y][self.cursor.x]
+
+        if current_char is None:
+            # Override the right-half of a wide-char on the left
+            self.canvas[self.cursor.y][self.cursor.x - 1] = FakeTerminalCell(' ')
+
+        # Override char under cursor
+        self.canvas[self.cursor.y][self.cursor.x] = cell
+
+        if cell.width == 2:
+            # For wide-char, check if it overrides the next char
+            next_char = self.canvas[self.cursor.y][self.cursor.x + 1]
+            if next_char.width == 2:
+                self.canvas[self.cursor.y][self.cursor.x + 2] = FakeTerminalCell(' ')
+
+            self.canvas[self.cursor.y][self.cursor.x + 1] = None
+
+        self.cursor.x += cell.width
+
+    def setline(self, y, text):
+        self.canvas[y] = text
+
+    def check_control_seq(self):
+        m = rere(self.seq)
+
+        if self.seq == '\033c':
+            # Reset terminal to initial state
+            self.reset()
+            return True
+
+        elif self.seq == '\r':
+            # Carriage return
+            self.cursor.x = 0
+
+        elif self.seq == '\n':
+            # Newline
+            self.cursor.x = 0
+            self.cursor.y += 1
+
+        elif m.fullmatch('\033' + r'\[(\d?)([AB])'):
+            # move cursor up/down
+            direction = (1 if m.group(2) == 'B' else -1)
+            self.cursor.y += int(m.group(1) or 1) * direction
+
+        elif m.fullmatch('\033' + r'\[(\d?)([CD])'):
+            # move cursor right/left
+            direction = (1 if m.group(2) == 'C' else -1)
+            self.cursor.x += int(m.group(1) or 1) * direction
+
+        elif self.seq == '\033[K':
+            self.setline(self.cursor.y, self.canvas[self.cursor.y][:self.cursor.x])
+
+        else:
+            if self.seq and self.seq.startswith('\033') and self.seq[-1].upper() in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                # Escape sequence is terminated but it's unknown, drop it
+                self.seq = ''
+            return False
+
+        # Consume the escape sequence
+        self.seq = ''
+
+        self.ensure_cursor_pos()
+
+        return True

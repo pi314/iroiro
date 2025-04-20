@@ -185,3 +185,78 @@ class TestSubprocRunMocker(TestCase):
 
         with self.raises(ValueError):
             p = mock_run('ls -a -l --wah'.split())
+
+
+class TestFakeTerminal(TestCase):
+    def test_size_limit(self):
+        ft = wara.FakeTerminal()
+        self.eq(ft.get_terminal_size(), (80, 24))
+
+        ft = wara.FakeTerminal(columns=0, lines=0)
+        self.eq(ft.get_terminal_size().lines, 1)
+        self.eq(ft.get_terminal_size().columns, 0)
+
+        with self.raises(ValueError):
+            wara.FakeTerminal(columns=-1)
+
+        with self.raises(ValueError):
+            wara.FakeTerminal(lines=-1)
+
+    def test_auto_size(self):
+        ft = wara.FakeTerminal(columns=0, lines=0)
+        ft.print('ABCD')
+        ft.print('EFGHI')
+        self.eq(ft.get_terminal_size().lines, 3)
+        self.eq(ft.get_terminal_size().columns, 5)
+
+    def test_basic(self):
+        ft = wara.FakeTerminal()
+        self.eq(ft, [''])
+        self.eq(ft.cursor, (0, 0))
+
+        ft.puts('ABCD\nEF')
+        self.eq(ft[0], 'ABCD')
+        self.eq(ft[1], 'EF')
+        self.eq(ft.cursor, (1, 2))
+
+        ft.puts('\rGH')
+        self.eq(ft.lines, ['ABCD', 'GH'])
+        self.eq(ft.cursor, (1, 2))
+
+        ft.puts('\033[AIJKL')
+        self.eq(ft.lines, ['ABIJKL', 'GH'])
+        self.eq(ft.cursor, (0, 6))
+
+    def test_wide_chars(self):
+        ft = wara.FakeTerminal()
+
+        ft.puts('ABCD\nEF')
+        self.eq(ft[0], 'ABCD')
+        self.eq(ft[1], 'EF')
+        self.eq(ft.cursor, (1, 2))
+
+        ft.puts('\r哇啊')
+        self.eq(ft.lines, ['ABCD', '哇啊'])
+        self.eq(ft.cursor, (1, 4))
+
+        ft.puts('\033[3D.')
+        self.eq(ft.lines, ['ABCD', ' .啊'])
+        self.eq(ft.cursor, (1, 2))
+
+        ft.puts('\033[A\r.嗚')
+        self.eq(ft.lines, ['.嗚D', ' .啊'])
+        self.eq(ft.cursor, (0, 3))
+
+        ft.puts('\033[B呀')
+        self.eq(ft.lines, ['.嗚D', ' . 呀'])
+        self.eq(ft.cursor, (1, 5))
+
+    def test_puts_over_line_end(self):
+        ft = wara.FakeTerminal()
+        ft.puts('ABCD')
+        self.eq(ft[0], 'ABCD')
+        self.eq(ft.cursor, (0, 4))
+
+        ft.puts('\033[5C哇')
+        self.eq(ft[0], 'ABCD     哇')
+        self.eq(ft.cursor, (0, 11))
