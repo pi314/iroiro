@@ -274,6 +274,11 @@ class FakeTerminal:
 
             self.canvas[self.cursor.y][self.cursor.x + 1] = None
 
+        # wrap
+        if self.width and self.cursor.x >= self.width:
+            self.cursor.y += 1
+            self.cursor.x = 0
+
         self.cursor.x += cell.width
 
     def check_control_seq(self):

@@ -188,32 +188,11 @@ class TestSubprocRunMocker(TestCase):
 
 
 class TestFakeTerminal(TestCase):
-    def test_size_limit(self):
-        ft = wara.FakeTerminal()
-        self.eq(ft.get_terminal_size(), (80, 24))
-
-        ft = wara.FakeTerminal(columns=0, lines=0)
-        self.eq(ft.get_terminal_size().lines, 1)
-        self.eq(ft.get_terminal_size().columns, 0)
-
-        with self.raises(ValueError):
-            wara.FakeTerminal(columns=-1)
-
-        with self.raises(ValueError):
-            wara.FakeTerminal(lines=-1)
-
     def test_init(self):
         ft = wara.FakeTerminal()
         self.eq(ft, [''])
         self.eq(ft.lines, [''])
         self.eq(ft.cursor, (0, 0))
-
-    def test_auto_size(self):
-        ft = wara.FakeTerminal(columns=0, lines=0)
-        ft.print('ABCD')
-        ft.print('EFGHI')
-        self.eq(ft.get_terminal_size().lines, 3)
-        self.eq(ft.get_terminal_size().columns, 5)
 
     def test_escape_seq_reset(self):
         ft = wara.FakeTerminal()
@@ -363,3 +342,48 @@ class TestFakeTerminal(TestCase):
         ft.puts('\033[5C哇')
         self.eq(ft[0], 'ABCD     哇')
         self.eq(ft.cursor, (0, 11))
+
+    def test_invalid_size_limit(self):
+        ft = wara.FakeTerminal()
+        self.eq(ft.get_terminal_size(), (80, 24))
+
+        ft = wara.FakeTerminal(columns=0, lines=0)
+        self.eq(ft.get_terminal_size().lines, 1)
+        self.eq(ft.get_terminal_size().columns, 0)
+
+        with self.raises(ValueError):
+            wara.FakeTerminal(columns=-1)
+
+        with self.raises(ValueError):
+            wara.FakeTerminal(lines=-1)
+
+    def test_auto_size(self):
+        ft = wara.FakeTerminal(columns=0, lines=0)
+        ft.print('ABCD')
+        ft.print('EFGHI')
+        self.eq(ft.get_terminal_size().lines, 3)
+        self.eq(ft.get_terminal_size().columns, 5)
+
+    def test_size_limit(self):
+        ft = wara.FakeTerminal()
+        self.eq(ft.get_terminal_size(), (80, 24))
+        self.eq(ft.cursor, (0, 0))
+
+        ft.puts('.' * 80)
+        self.eq(ft.cursor.y, 0)
+        self.eq(ft.cursor.x, 80)
+
+        ft = wara.FakeTerminal()
+        ft.puts('.' * 81)
+        self.eq(ft.cursor.y, 1)
+        self.eq(ft.cursor.x, 1)
+
+
+        ft = wara.FakeTerminal()
+        ft.puts('.' + '哇' * 40)
+        self.eq(ft.cursor.y, 0)
+        self.eq(ft.cursor.x, 81)
+
+        ft.puts('哇')
+        self.eq(ft.cursor.y, 1)
+        self.eq(ft.cursor.x, 2)
