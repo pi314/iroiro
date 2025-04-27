@@ -271,7 +271,7 @@ class TestThreadedSpinner(TestCase):
 
     def test_context_manager(self):
         spinner = ThreadedSpinner()
-        spinner.print_function = lambda *args, **kwarags: None
+        spinner.print = lambda *args, **kwarags: None
         with spinner:
             with spinner:
                 spinner.start()
@@ -282,7 +282,7 @@ class TestThreadedSpinner(TestCase):
 
         delay = 1
         spinner = ThreadedSpinner('ENTRY', 'LOOP', 'OUT', delay=delay)
-        spinner.print_function = self.mock_print
+        spinner.print = self.mock_print
 
         event_list = [
                 Event( 0, 'print', ('E', 'meow')),
@@ -808,6 +808,11 @@ class TestGetch(TestCase):
 
 
 class TestPseudoCanvas(TestCase):
+    def setUp(self):
+        from .lib_test_utils import FakeTerminal
+        self.terminal = FakeTerminal()
+        self.patch('shutil.get_terminal_size', self.terminal.get_terminal_size)
+
     def test_data_storing(self):
         pc = PseudoCanvas()
         self.true(pc.empty)
@@ -815,7 +820,8 @@ class TestPseudoCanvas(TestCase):
         pc.append('wah1')
         pc.append('wah2')
         pc.append('wah3')
-        self.eq(len(pc), 3)
+        pc.extend(['wah4', 'wah5'])
+        self.eq(len(pc), 5)
         self.false(pc.empty)
 
         self.eq(
@@ -824,3 +830,42 @@ class TestPseudoCanvas(TestCase):
                 )
 
         self.eq(pc[1], 'wah2')
+
+        pc[1] = 'wahwah'
+        self.eq(pc[1], 'wahwah')
+
+    def test_render_basic(self):
+        pc = PseudoCanvas()
+        pc.print = self.terminal.print
+
+        self.eq(self.terminal.lines, [''])
+        pc.render()
+        self.eq(self.terminal.lines, [''])
+
+        data = ['wah1', 'wah2', 'wah3']
+        pc.extend(data)
+
+        self.eq(self.terminal.lines, [''])
+        pc.render()
+        self.eq(self.terminal.lines, data)
+
+        pc[1] = '哇啊'
+        self.eq(self.terminal.lines, data)
+        pc.render()
+        self.eq(self.terminal.lines, ['wah1', '哇啊', 'wah3'])
+
+    def test_render_horizontal_overflow(self):
+        pc = PseudoCanvas()
+        pc.print = self.terminal.print
+        self.eq(self.terminal.width, 80)
+        self.eq(self.terminal.height, 24)
+
+        pc.append('哇' * 50)
+        pc.append('a' + '哇' * 50)
+        pc.append('aa' + '哇' * 50)
+        pc.render()
+        self.eq(self.terminal.lines, [
+            '哇' * 40,
+            'a' + '哇' * 39,
+            'aa' + '哇' * 39,
+            ])

@@ -235,6 +235,8 @@ class FakeTerminal:
             self.canvas.append([])
 
     def print(self, *args, sep=' ', end='\n', **kwargs):
+        if end is None:
+            end = '\n'
         self.puts(sep.join(str(arg) for arg in args) + end)
 
     def puts(self, text):

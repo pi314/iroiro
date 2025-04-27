@@ -150,7 +150,7 @@ class ThreadedSpinner:
         self.icon_head = [None, None]
 
         import builtins
-        self.print_function = builtins.print
+        self.print = builtins.print
 
     def __enter__(self):
         if self.thread:
@@ -178,7 +178,7 @@ class ThreadedSpinner:
             self.refresh()
 
     def refresh(self):
-        self.print_function('\r' + self.icon + '\033[K ' + self._text, end='')
+        self.print('\r' + self.icon + '\033[K ' + self._text, end='')
 
     def animate(self):
         import time
@@ -196,7 +196,7 @@ class ThreadedSpinner:
         except StopIteration:
             pass
 
-        self.print_function()
+        self.print()
 
     def start(self):
         if self.thread:
@@ -570,9 +570,16 @@ class PseudoCanvas:
         self.dirty = []
         self.alloc = 0
 
+        import builtins
+        self.print = builtins.print
+
     def append(self, line=''):
         self.lines.append(line)
         self.dirty.append(True)
+
+    def extend(self, lines=[]):
+        for line in lines:
+            self.append(line)
 
     @property
     def empty(self):
@@ -614,10 +621,10 @@ class PseudoCanvas:
 
             # Align cursor position
             if cursor != idx:
-                print('\r\033[{}{}'.format(abs(cursor - idx), 'A' if cursor > idx else 'B'), end='')
+                self.print('\r\033[{}{}'.format(abs(cursor - idx), 'A' if cursor > idx else 'B'), end='')
 
             # Print content onto screen
-            print('\r\033[K{}'.format(wrap(line, term_width)[0]),
+            self.print('\r\033[K{}'.format(wrap(line, term_width)[0]),
                   end='' if is_last else None)
 
             # Estimate cursor position
