@@ -888,9 +888,6 @@ class TestPseudoCanvas(TestCase):
         self.eq(len(self.terminal.recording), 24)
         self.terminal.recording = False
 
-        for line in self.terminal.lines:
-            print('[', line, ']')
-
         # Check terminal has 24 lines
         self.eq(len(self.terminal.lines), 24)
         for i in range(26, 50):
@@ -900,9 +897,9 @@ class TestPseudoCanvas(TestCase):
         self.eq(self.terminal.cursor.y, 23)
 
         # Update a visible line and an invisible line
+        self.terminal.recording = True
         pc[5] = '哇 5 (new)'
         pc[40] = '哇 40 (new)'
-        self.terminal.recording = True
         pc.render()
 
         # The last line is always updated in order to restore cursor position
@@ -911,5 +908,12 @@ class TestPseudoCanvas(TestCase):
             '\r\033[K哇 40 (new)\n',
             '\r\033[8B',
             '\r\033[K哇 49'])
-
         self.terminal.recording = False
+
+        # Try a hard re-render
+        self.terminal.recording = True
+        pc[40] = '哇 40'
+        pc.render(all=True)
+        self.eq(self.terminal.recording, ['\r\033[23A'] +
+                ['\r\033[K哇 {}\n'.format(i) for i in range(26, 49)] +
+                ['\r\033[K哇 49'])
