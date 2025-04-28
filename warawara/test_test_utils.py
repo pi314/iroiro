@@ -378,7 +378,6 @@ class TestFakeTerminal(TestCase):
         self.eq(ft.cursor.y, 1)
         self.eq(ft.cursor.x, 1)
 
-
         ft = wara.FakeTerminal()
         ft.puts('.' + '哇' * 40)
         self.eq(ft.cursor.y, 0)
