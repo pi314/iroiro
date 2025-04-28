@@ -360,7 +360,7 @@ class TestFakeTerminal(TestCase):
     def test_auto_size(self):
         ft = wara.FakeTerminal(columns=0, lines=0)
         ft.print('ABCD')
-        ft.print('EFGHI')
+        ft.print('EFGHI', end=None)
         self.eq(ft.get_terminal_size().lines, 3)
         self.eq(ft.get_terminal_size().columns, 5)
 
@@ -387,3 +387,22 @@ class TestFakeTerminal(TestCase):
         ft.puts('哇')
         self.eq(ft.cursor.y, 1)
         self.eq(ft.cursor.x, 2)
+
+    def test_recording(self):
+        ft = wara.FakeTerminal()
+        self.false(ft.recording)
+
+        ft.recording = True
+        self.eq(ft.recording, [])
+
+        ft.puts('wah')
+        self.eq(ft.recording, ['wah'])
+
+        ft.puts('wow')
+        self.eq(ft.recording, ['wah', 'wow'])
+
+        ft.recording = False
+        self.false(ft.recording)
+
+        with self.raises(TypeError):
+            ft.recording = 'wah'
