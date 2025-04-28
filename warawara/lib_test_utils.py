@@ -199,7 +199,20 @@ class FakeTerminal:
         self.canvas = [[]]
         self.cursor = FakeTerminalCursor()
 
-        self.seq = ''
+        self.chewing = ''
+
+        self.recording_history = False
+
+    @property
+    def recording(self):
+        return self.recording_history
+
+    @recording.setter
+    def recording(self, enable):
+        if not isinstance(enable, bool):
+            raise TypeError('recording must be a boolean')
+
+        self.recording_history = [] if enable else False
 
     def __getitem__(self, idx):
         return ''.join(cell.char for cell in self.canvas[idx] if cell is not None).rstrip(' ')
@@ -241,12 +254,15 @@ class FakeTerminal:
 
     def puts(self, text):
         for char in text:
-            self.seq += char
+            self.chewing += char
             if self.check_control_seq():
                 continue
-            if self.seq and self.seq.isprintable():
-                self.putc(self.seq)
-                self.seq = ''
+            if self.chewing and self.chewing.isprintable():
+                self.putc(self.chewing)
+                self.chewing = ''
+
+        if isinstance(self.recording_history, list):
+            self.recording_history.append(text)
 
     def putc(self, char):
         cell = FakeTerminalCell(char)
@@ -284,18 +300,18 @@ class FakeTerminal:
         self.cursor.x += cell.width
 
     def check_control_seq(self):
-        m = rere(self.seq)
+        m = rere(self.chewing)
 
-        if self.seq == '\033c':
+        if self.chewing == '\033c':
             # Reset terminal to initial state
             self.reset()
             return True
 
-        elif self.seq == '\r':
+        elif self.chewing == '\r':
             # Carriage return
             self.cursor.x = 0
 
-        elif self.seq == '\n':
+        elif self.chewing == '\n':
             # Newline
             self.cursor.x = 0
             self.cursor.y += 1
@@ -310,7 +326,7 @@ class FakeTerminal:
             direction = (1 if m.group(2) == 'C' else -1)
             self.cursor.x += int(m.group(1) or 1) * direction
 
-        elif self.seq == '\033[H':
+        elif self.chewing == '\033[H':
             self.cursor.y = 0
             self.cursor.x = 0
 
@@ -318,19 +334,19 @@ class FakeTerminal:
             self.cursor.y = int(m.group(1) or 1) - 1
             self.cursor.x = int(m.group(2) or 1) - 1
 
-        elif self.seq == '\033[K':
+        elif self.chewing == '\033[K':
             self.canvas[self.cursor.y] = self.canvas[self.cursor.y][:self.cursor.x]
             if self.cursor.x > 0 and self.canvas[self.cursor.y][-1].width == 2:
                 self.canvas[self.cursor.y][-1] = FakeTerminalCell(' ')
 
         else:
-            if self.seq and self.seq.startswith('\033') and self.seq[-1].upper() in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+            if self.chewing and self.chewing.startswith('\033') and self.chewing[-1].upper() in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
                 # Escape sequence is terminated but it's unknown, drop it
-                self.seq = ''
+                self.chewing = ''
             return False
 
         # Consume the escape sequence
-        self.seq = ''
+        self.chewing = ''
 
         self.ensure_cursor_pos()
 

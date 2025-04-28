@@ -811,7 +811,7 @@ class TestPseudoCanvas(TestCase):
     def setUp(self):
         from .lib_test_utils import FakeTerminal
         self.terminal = FakeTerminal()
-        self.patch('shutil.get_terminal_size', self.terminal.get_terminal_size)
+        self.patch('shutil.get_terminal_size', lambda: self.terminal.get_terminal_size())
 
     def test_data_storing(self):
         pc = PseudoCanvas()
@@ -869,3 +869,47 @@ class TestPseudoCanvas(TestCase):
             'a' + '哇' * 39,
             'aa' + '哇' * 39,
             ])
+
+    def test_render_vertical_overflow(self):
+        pc = PseudoCanvas()
+        data = []
+        pc.print = lambda *args, **kwargs: data.append((args, kwargs))
+        pc.print = self.terminal.print
+        self.eq(self.terminal.width, 80)
+        self.eq(self.terminal.height, 24)
+
+        for i in range(50):
+            pc.append('哇 {}'.format(i))
+
+        self.terminal.recording = True
+        pc.render()
+
+        # Check pc sent 24 sequences for each individual line
+        self.eq(len(self.terminal.recording), 24)
+        self.terminal.recording = False
+
+        for line in self.terminal.lines:
+            print('[', line, ']')
+
+        # Check terminal has 24 lines
+        self.eq(len(self.terminal.lines), 24)
+        for i in range(26, 50):
+            self.eq(self.terminal.lines[i - 26], '哇 {}'.format(i))
+
+        # Check cursor position
+        self.eq(self.terminal.cursor.y, 23)
+
+        # Update a visible line and an invisible line
+        pc[5] = '哇 5 (new)'
+        pc[40] = '哇 40 (new)'
+        self.terminal.recording = True
+        pc.render()
+
+        # The last line is always updated in order to restore cursor position
+        self.eq(self.terminal.recording, [
+            '\r\033[9A',
+            '\r\033[K哇 40 (new)\n',
+            '\r\033[8B',
+            '\r\033[K哇 49'])
+
+        self.terminal.recording = False

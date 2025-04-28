@@ -568,7 +568,8 @@ class PseudoCanvas:
     def __init__(self):
         self.lines = []
         self.dirty = []
-        self.alloc = 0
+        self.avail_space = 0
+        self.cursor = 0
 
         import builtins
         self.print = builtins.print
@@ -602,17 +603,19 @@ class PseudoCanvas:
         if self.empty:
             return
 
+        if all:
+            self.dirty = [True for d in self.dirty]
+
         import shutil
         term_size = shutil.get_terminal_size()
         term_width = term_size.columns
         term_height = term_size.lines
 
-        cursor = max(self.alloc - 1, 0)
-
+        # Assumed that cursor is always at the end of last line
         from .lib_itertools import lookahead
         for (idx, line), is_last in lookahead(enumerate(self.lines)):
             # Skip non-dirty lines, but always redraw the last line
-            if not self.dirty[idx] and not all and not is_last:
+            if not self.dirty[idx] and not is_last:
                 continue
 
             # Skip out-of-screen lines
@@ -620,15 +623,17 @@ class PseudoCanvas:
                 continue
 
             # Align cursor position
-            if cursor != idx:
-                self.print('\r\033[{}{}'.format(abs(cursor - idx), 'A' if cursor > idx else 'B'), end='')
+            if self.cursor != idx:
+                dist = min(abs(self.cursor - idx), self.avail_space - 1)
+                if dist > 0:
+                    self.print('\r\033[{}{}'.format(dist, 'A' if self.cursor > idx else 'B'), end='')
 
             # Print content onto screen
             self.print('\r\033[K{}'.format(wrap(line, term_width)[0]),
-                  end='' if is_last else None)
+                  end='' if is_last else '\n')
 
             # Estimate cursor position
-            cursor = idx + (not is_last)
+            self.cursor = idx + (not is_last)
 
-            self.alloc = max(self.alloc, idx + 1)
+            self.avail_space = min(term_height, max(self.avail_space, idx + 1))
             self.dirty[idx] = False
