@@ -35,18 +35,18 @@ class Color(abc.ABC):
         return self.fg(*args)
 
     def fg(self, *args):
-        return self.apply('38', ' '.join(str(arg) for arg in args))
+        return self.apply('3', ' '.join(str(arg) for arg in args))
 
     def bg(self, *args, **kwargs):
-        return self.apply('48', ' '.join(str(arg) for arg in args))
+        return self.apply('4', ' '.join(str(arg) for arg in args))
 
     def apply(self, ground, s):
         if not self.seq:
             return s
-        return '\033[{};{}m{}\033[m'.format(ground, self.seq, str(s))
+        return '\033[{}{}m{}\033[m'.format(ground, self.seq, str(s))
 
     def __str__(self):
-        return '\033[38;{}m'.format(self.seq) if self.seq else '\033[m'
+        return '\033[3{}m'.format(self.seq) if self.seq else '\033[m'
 
     def __invert__(self):
         return ColorCompound(bg=self)
@@ -117,7 +117,7 @@ class Color256(Color):
     def seq(self):
         if self.index is None:
             return ''
-        return '5;{}'.format(self.index)
+        return '8;5;{}'.format(self.index)
 
     def to_rgb(self):
         if self.index < 16:
@@ -212,7 +212,7 @@ class ColorRGB(Color):
     def seq(self):
         if None in self.rgb:
             return ''
-        return '2;{};{};{}'.format(self.R, self.G, self.B)
+        return '8;2;{};{};{}'.format(self.R, self.G, self.B)
 
     def __add__(self, other):
         rgb = vector(self.rgb) + vector(other.rgb)
@@ -353,8 +353,8 @@ class ColorCompound:
         self.bg = color(bg)
 
         seq = ';'.join(filter(None, [
-            '38;' + self.fg.seq if self.fg.seq else None,
-            '48;' + self.bg.seq if self.bg.seq else None,
+            '3' + self.fg.seq if self.fg.seq else None,
+            '4' + self.bg.seq if self.bg.seq else None,
             ]))
         self.seq = '' if not seq else ('\033[' + seq + 'm')
 
@@ -509,11 +509,11 @@ _setup_named_colors()
 del _setup_named_colors
 
 
-decolor_regex = re.compile('\033' + r'\[[\d;]*m')
+color_esc_seq_regex = re.compile('\033' + r'\[[\d;]*m')
 
 @export
 def decolor(s):
-    return decolor_regex.sub('', s)
+    return color_esc_seq_regex.sub('', s)
 
 
 @export
