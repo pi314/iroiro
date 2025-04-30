@@ -130,6 +130,9 @@ def color(*args, **kwargs):
     elif isinstance(arg1, str) and re.fullmatch(r'@[0-9]+,[0-9]+,[0-9]+', arg1):
         return ColorHSV(*args, **kwargs)
 
+    elif isinstance(arg1, str):
+        return extract(arg1)
+
     raise TypeError('Invalid arguments: {}'.format(args))
 
 
@@ -595,6 +598,62 @@ color_esc_seq_regex = re.compile('\033' + r'\[[\d;]*m')
 @export
 def decolor(s):
     return color_esc_seq_regex.sub('', s)
+
+
+def extract(seq):
+    prefix = 0
+    token = ''
+    more = []
+
+    attr = {
+            '': [],
+            'fg': [],
+            'bg': [],
+            }
+    for char in seq:
+        if char == '\033':
+            prefix = 1
+            more = []
+            continue
+
+        if prefix == 1 and char == '[':
+            prefix = 2
+            continue
+
+        elif prefix == 2:
+            if char in '0123456789':
+                token += char
+                continue
+
+            if char not in ('m', ';'):
+                token = ''
+                continue
+
+            if token:
+                more.append(int(token, 10))
+                token = ''
+
+            if not more:
+                continue
+
+            if (30 <= more[0] <= 37) or (40 <= more[0] <= 47):
+                attr['fg' if more[0] < 40 else 'bg'] = more[0]
+                more = []
+                continue
+
+            elif more[0] in (38, 48):
+                if len(more) == 1:
+                    continue
+                elif more[1] == 5 and len(more) < 3:
+                    continue
+                elif more[1] == 5 and len(more) >= 3:
+                    attr['fg' if more[0] < 40 else 'bg'] = more[0:3]
+                    more = more[3:]
+
+        else:
+            prefix = 0
+
+    return attr
 
 
 @export
