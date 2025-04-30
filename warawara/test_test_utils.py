@@ -405,3 +405,11 @@ class TestFakeTerminal(TestCase):
 
         with self.raises(TypeError):
             ft.recording = 'wah'
+
+    def test_color(self):
+        ft = wara.FakeTerminal()
+        self.false(ft.recording)
+
+        # ft.recording = True
+        ft.puts('\033[38;5;208mwah\033[mwow')
+        self.eq(ft.canvas[0][0].attr, '38;5;208')

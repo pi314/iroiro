@@ -265,21 +265,21 @@ class FakeTerminal:
             self.recording_history.append(text)
 
     def putc(self, char):
-        cell = FakeTerminalCell(char)
+        cell = FakeTerminalCell(char, attr=self.cursor.attr)
 
         self.ensure_cursor_pos()
 
         # Make sure canvas is wide enough
         # Pre-fill spaces to make index-calculation easier
         for i in range(len(self.canvas[self.cursor.y]), self.cursor.x + cell.width):
-            self.canvas[self.cursor.y].append(FakeTerminalCell(' '))
+            self.canvas[self.cursor.y].append(FakeTerminalCell(' ', attr=self.cursor.attr))
 
         current_line = self.canvas[self.cursor.y]
         current_char = self.canvas[self.cursor.y][self.cursor.x]
 
         if current_char is None:
             # Override the right-half of a wide-char on the left
-            self.canvas[self.cursor.y][self.cursor.x - 1] = FakeTerminalCell(' ')
+            self.canvas[self.cursor.y][self.cursor.x - 1] = FakeTerminalCell(' ', attr=self.cursor.attr)
 
         # Override char under cursor
         self.canvas[self.cursor.y][self.cursor.x] = cell
@@ -288,7 +288,7 @@ class FakeTerminal:
             # For wide-char, check if it overrides the next char
             next_char = self.canvas[self.cursor.y][self.cursor.x + 1]
             if next_char.width == 2:
-                self.canvas[self.cursor.y][self.cursor.x + 2] = FakeTerminalCell(' ')
+                self.canvas[self.cursor.y][self.cursor.x + 2] = FakeTerminalCell(' ', attr=self.cursor.attr)
 
             self.canvas[self.cursor.y][self.cursor.x + 1] = None
 
@@ -339,8 +339,16 @@ class FakeTerminal:
             if self.cursor.x > 0 and self.canvas[self.cursor.y][-1].width == 2:
                 self.canvas[self.cursor.y][-1] = FakeTerminalCell(' ')
 
+        elif m.fullmatch('\033' + r'\[([\d;]*)m'):
+            if m.text == '\033[m':
+                self.cursor.attr = None
+            else:
+                self.cursor.attr = m.group(1)
+
         else:
-            if self.chewing and self.chewing.startswith('\033') and self.chewing[-1].upper() in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+            if (self.chewing and
+                self.chewing.startswith('\033') and
+                self.chewing[-1].upper() in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
                 # Escape sequence is terminated but it's unknown, drop it
                 self.chewing = ''
             return False
