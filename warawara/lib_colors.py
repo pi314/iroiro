@@ -17,8 +17,16 @@ export, __all__ = exporter()
 @export
 class Color(abc.ABC):
     @abc.abstractmethod
-    def __init__(self, *args, **kwargs): # pragma: no cover
-        raise NotImplementedError
+    def __init__(self, *args,
+                 bold=False, lowint=False, underline=False,
+                 blink=False, reverse=False, invisible=False,
+                 **kwargs): # pragma: no cover
+        self.bold = bold
+        self.lowint = lowint
+        self.underline = underline
+        self.blink = blink
+        self.reverse = reverse
+        self.invisible = invisible
 
     @abc.abstractmethod
     def __repr__(self): # pragma: no cover
@@ -43,6 +51,14 @@ class Color(abc.ABC):
     def apply(self, ground, s):
         if not self.seq:
             return s
+        #modesoff SGR0         Turn off character attributes ^[[m
+        #modesoff SGR0         Turn off character attributes ^[[0m
+        #bold SGR1             Turn bold mode on             ^[[1m
+        #lowint SGR2           Turn low intensity mode on    ^[[2m
+        #underline SGR4        Turn underline mode on        ^[[4m
+        #blink SGR5            Turn blinking mode on         ^[[5m
+        #reverse SGR7          Turn reverse video on         ^[[7m
+        #invisible SGR8        Turn invisible text mode on   ^[[8m
         return '\033[{}{}m{}\033[m'.format(ground, self.seq, str(s))
 
     def __str__(self):
@@ -96,8 +112,32 @@ def color(*args, **kwargs):
 
 
 @export
+class Color8(Color):
+    def __init__(self, index=None, **kwargs):
+        super().__init__(**kwargs)
+        if isinstance(index, self.__class__):
+            index = index.index
+
+        self.index = index
+
+        if not self.index is None and not (0 <= self.index <= 7):
+            raise TypeError('Invalid color index: {}'.format(index))
+
+    @property
+    def code(self):
+        return self.index
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, self.index)
+
+    def __int__(self):
+        return self.index
+
+
+@export
 class Color256(Color):
-    def __init__(self, index=None):
+    def __init__(self, index=None, **kwargs):
+        super().__init__(**kwargs)
         if isinstance(index, self.__class__):
             index = index.index
 
@@ -151,7 +191,9 @@ class Color256(Color):
 
 @export
 class ColorRGB(Color):
-    def __init__(self, *args, overflow=False):
+    def __init__(self, *args, overflow=False, **kwargs):
+        super().__init__(**kwargs)
+
         nargs = len(args)
         arg1 = args[0] if len(args) else None
 
@@ -248,7 +290,9 @@ class ColorRGB(Color):
 
 @export
 class ColorHSV(Color):
-    def __init__(self, *args, overflow=False):
+    def __init__(self, *args, overflow=False, **kwargs):
+        super().__init__(**kwargs)
+
         arg1 = args[0] if len(args) else None
 
         self.h = None

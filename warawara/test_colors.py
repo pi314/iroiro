@@ -125,6 +125,12 @@ class TestColorTraits(TestCase):
                 self.eq(A | B, B)
 
 
+class TestColor8(TestCase):
+    def test_color8_code(self):
+        for i in range(8):
+            self.eq(Color8(i).code, i)
+
+
 class TestColor256(TestCase):
     def test_color256_code(self):
         for i in range(256):
