@@ -126,15 +126,15 @@ class TestColorTraits(TestCase):
 
 
 class TestColor8(TestCase):
-    def test_color8_code(self):
+    def test_color8_index(self):
         for i in range(8):
-            self.eq(Color8(i).code, i)
+            self.eq(Color8(i).index, i)
 
 
 class TestColor256(TestCase):
-    def test_color256_code(self):
+    def test_color256_index(self):
         for i in range(256):
-            self.eq(color(i).code, i)
+            self.eq(color(i).index, i)
 
     def test_color256_to_rgb(self):
         self.eq(color(0).to_rgb(), ColorRGB(0x00, 0x00, 0x00))

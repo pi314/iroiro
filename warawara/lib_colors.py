@@ -14,6 +14,32 @@ from .internal_utils import exporter
 export, __all__ = exporter()
 
 
+def _apply(fg, bg, *args):
+    s = ' '.join(str(arg) for arg in args)
+
+    seq = ';'.join(filter(None, (
+        ('3' + fg.code) if fg is not None and fg.code else None,
+        ('4' + bg.code) if bg is not None and bg.code else None,
+        )))
+
+    # modesoff SGR0         Turn off character attributes ^[[m
+    # modesoff SGR0         Turn off character attributes ^[[0m
+    # bold SGR1             Turn bold mode on             ^[[1m
+    # lowint SGR2           Turn low intensity mode on    ^[[2m
+    # underline SGR4        Turn underline mode on        ^[[4m
+    # blink SGR5            Turn blinking mode on         ^[[5m
+    # reverse SGR7          Turn reverse video on         ^[[7m
+    # invisible SGR8        Turn invisible text mode on   ^[[8m
+
+    start = ('\033[' + seq + 'm') if seq else ''
+    end = '\033[m' if start else ''
+
+    if not args:
+        return start
+
+    return start + s + end
+
+
 @export
 class Color(abc.ABC):
     @abc.abstractmethod
@@ -28,6 +54,15 @@ class Color(abc.ABC):
         self.reverse = reverse
         self.invisible = invisible
 
+    @property
+    @abc.abstractmethod
+    def code(self): # pragma: no cover
+        raise NotImplementedError
+
+    @property
+    def seq(self):
+        return _apply(self, None)
+
     @abc.abstractmethod
     def __repr__(self): # pragma: no cover
         raise NotImplementedError
@@ -37,32 +72,19 @@ class Color(abc.ABC):
         raise NotImplementedError
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.seq == other.seq
+        return isinstance(other, self.__class__) and self.code == other.code
 
     def __call__(self, *args):
         return self.fg(*args)
 
     def fg(self, *args):
-        return self.apply('3', ' '.join(str(arg) for arg in args))
+        return _apply(self, None, *args)
 
     def bg(self, *args, **kwargs):
-        return self.apply('4', ' '.join(str(arg) for arg in args))
-
-    def apply(self, ground, s):
-        if not self.seq:
-            return s
-        #modesoff SGR0         Turn off character attributes ^[[m
-        #modesoff SGR0         Turn off character attributes ^[[0m
-        #bold SGR1             Turn bold mode on             ^[[1m
-        #lowint SGR2           Turn low intensity mode on    ^[[2m
-        #underline SGR4        Turn underline mode on        ^[[4m
-        #blink SGR5            Turn blinking mode on         ^[[5m
-        #reverse SGR7          Turn reverse video on         ^[[7m
-        #invisible SGR8        Turn invisible text mode on   ^[[8m
-        return '\033[{}{}m{}\033[m'.format(ground, self.seq, str(s))
+        return _apply(None, self, *args)
 
     def __str__(self):
-        return '\033[3{}m'.format(self.seq) if self.seq else '\033[m'
+        return _apply(self, None) or '\033[m'
 
     def __invert__(self):
         return ColorCompound(bg=self)
@@ -74,7 +96,7 @@ class Color(abc.ABC):
 
     def __or__(self, other):
         if isinstance(other, Color):
-            return other if other.seq else self
+            return other if other.code else self
         return ColorCompound(fg=self) | other
 
 
@@ -125,7 +147,7 @@ class Color8(Color):
 
     @property
     def code(self):
-        return self.index
+        return str(self.index)
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, self.index)
@@ -151,10 +173,6 @@ class Color256(Color):
 
     @property
     def code(self):
-        return self.index
-
-    @property
-    def seq(self):
         if self.index is None:
             return ''
         return '8;5;{}'.format(self.index)
@@ -251,7 +269,7 @@ class ColorRGB(Color):
         return (self.r, self.g, self.b)
 
     @property
-    def seq(self):
+    def code(self):
         if None in self.rgb:
             return ''
         return '8;2;{};{};{}'.format(self.R, self.G, self.B)
@@ -354,10 +372,10 @@ class ColorHSV(Color):
         return (self.h, self.s, self.v)
 
     @property
-    def seq(self):
+    def code(self):
         if None in self.hsv:
             return ''
-        return self._rgb.seq
+        return self._rgb.code
 
     def __add__(self, other):
         hsv = vector(self.hsv) + vector(other.hsv)
@@ -396,24 +414,22 @@ class ColorCompound:
         self.fg = color(fg)
         self.bg = color(bg)
 
-        seq = ';'.join(filter(None, [
-            '3' + self.fg.seq if self.fg.seq else None,
-            '4' + self.bg.seq if self.bg.seq else None,
-            ]))
-        self.seq = '' if not seq else ('\033[' + seq + 'm')
+    @property
+    def seq(self):
+        return _apply(self.fg, self.bg)
 
     def __repr__(self):
         return 'ColorCompound(fg={fg}, bg={bg})'.format(fg=self.fg, bg=self.bg)
 
-    def __call__(self, s=''):
-        return s if not self.seq else f'{self.seq}{s}\033[m'
+    def __call__(self, *args):
+        return _apply(self.fg, self.bg, *args)
 
     def __str__(self):
-        return self.seq or '\033[m'
+        return _apply(self.fg, self.bg) or '\033[m'
 
     def __or__(self, other):
-        fg = other.fg if other.fg.seq else self.fg
-        bg = other.bg if other.bg.seq else self.bg
+        fg = other.fg if other.fg.code else self.fg
+        bg = other.bg if other.bg.code else self.bg
 
         return ColorCompound(fg=fg, bg=bg)
 
