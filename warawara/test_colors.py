@@ -59,7 +59,9 @@ class TestColorFacade(TestCase):
             ColorRGB(True)
 
     def test_color_parse(self):
-        self.eq(color('\033[38;5;208m'), color(208))
+        self.eq(color('\033[38;5;214m'), paint(fg=color(214)))
+        self.eq(color('\033[48;5;214m'), paint(bg=color(214)))
+        self.eq(color('\033[38;5;214;48;5;208m'), paint(fg=color(214), bg=color(208)))
 
 
 class TestColorTraits(TestCase):

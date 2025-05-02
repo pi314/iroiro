@@ -131,7 +131,7 @@ def color(*args, **kwargs):
         return ColorHSV(*args, **kwargs)
 
     elif isinstance(arg1, str):
-        return extract(arg1)
+        return _parse(arg1)
 
     raise TypeError('Invalid arguments: {}'.format(args))
 
@@ -443,7 +443,7 @@ class ColorCompound:
     def __repr__(self):
         return '{clsname}(fg={fg}, bg={bg})'.format(
                 clsname=self.__class__.__name__,
-                fg=self.fg, bg=self.bg)
+                fg=repr(self.fg), bg=repr(self.bg))
 
     def __call__(self, *args):
         return _apply(self.fg, self.bg, *args)
@@ -600,13 +600,13 @@ def decolor(s):
     return color_esc_seq_regex.sub('', s)
 
 
-def extract(seq):
+def _parse(seq):
     prefix = 0
     token = ''
     more = []
 
     attr = {
-            '': [],
+            'em': set(),
             'fg': [],
             'bg': [],
             }
@@ -636,6 +636,11 @@ def extract(seq):
             if not more:
                 continue
 
+            if more[0] in (1, 2, 4, 5, 7, 8):
+                attr['em'] = attr['em'].add(more[0])
+                more = []
+                continue
+
             if (30 <= more[0] <= 37) or (40 <= more[0] <= 47):
                 attr['fg' if more[0] < 40 else 'bg'] = more[0]
                 more = []
@@ -653,7 +658,17 @@ def extract(seq):
         else:
             prefix = 0
 
-    return attr
+    ret = {'fg': None, 'bg': None}
+    for ground in ('fg', 'bg'):
+        seq = attr[ground]
+        if len(seq) == 1 and 30 <= seq[0] <= 37:
+            ret[ground] = Color8(seq[0])
+        elif len(seq) == 3 and seq[0] in (38, 48) and seq[1] == 5:
+            ret[ground] = Color256(seq[2])
+        elif len(seq) == 5 and seq[0] in (38, 48) and seq[1] == 2:
+            ret[ground] = ColorRGB(seq[2:5])
+
+    return ColorCompound(fg=ret['fg'], bg=ret['bg'])
 
 
 @export
