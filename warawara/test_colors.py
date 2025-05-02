@@ -283,10 +283,17 @@ class TestColorHSV(TestCase):
         self.true(red.to_hsv() is red)
 
     def test_hsv(self):
-        some_color = ColorHSV(60, 90, 0)
+        some_color = ColorHSV(420, 90.5, 0.5)
         self.eq(some_color.h, 60)
-        self.eq(some_color.s, 90)
-        self.eq(some_color.v, 0)
+        self.eq(some_color.s, 90.5)
+        self.eq(some_color.v, 0.5)
+        self.eq(some_color.hsv, (60, 90.5, 0.5))
+
+        self.eq(some_color.H, 60)
+        self.eq(some_color.S, 90)
+        self.eq(some_color.V, 0)
+        self.eq(some_color.HSV, (60, 90, 0))
+
         self.eq(int(some_color), 60090000)
 
     def test_value_range_check(self):

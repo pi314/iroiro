@@ -150,7 +150,9 @@ class Color8(Color):
         return str(self.index)
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, self.index)
+        return '{name}({index})'.format(
+                name=self.__class__.__name__,
+                index=self.index)
 
     def __int__(self):
         return self.index
@@ -169,7 +171,9 @@ class Color256(Color):
             raise TypeError('Invalid color index: {}'.format(index))
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, self.index)
+        return '{name}({index})'.format(
+                name=self.__class__.__name__,
+                index=self.index)
 
     @property
     def code(self):
@@ -246,7 +250,9 @@ class ColorRGB(Color):
             raise TypeError('Invalid RGB value: {}'.format(args))
 
     def __repr__(self):
-        return 'ColorRGB({}, {}, {})'.format(self.r, self.g, self.b)
+        return '{name}({self.r}, {self.g}, {self.b})'.format(
+                name=self.__class__.__name__,
+                self=self)
 
     @property
     def R(self):
@@ -349,7 +355,9 @@ class ColorHSV(Color):
             raise TypeError('Invalid HSV value: {}'.format(args))
 
     def __repr__(self):
-        return 'ColorHSV({:}deg, {:}%, {:}%)'.format(*self.HSV)
+        return '{name}({h}deg, {s}%, {v}%)'.format(
+                name=self.__class__.__name__,
+                h=self.h, s=self.s, v=self.v)
 
     @property
     def H(self):
@@ -419,7 +427,9 @@ class ColorCompound:
         return _apply(self.fg, self.bg)
 
     def __repr__(self):
-        return 'ColorCompound(fg={fg}, bg={bg})'.format(fg=self.fg, bg=self.bg)
+        return '{clsname}(fg={fg}, bg={bg})'.format(
+                clsname=self.__class__.__name__,
+                fg=self.fg, bg=self.bg)
 
     def __call__(self, *args):
         return _apply(self.fg, self.bg, *args)
