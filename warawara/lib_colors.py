@@ -145,10 +145,6 @@ class Color8(Color):
         if not self.index is None and not (0 <= self.index <= 7):
             raise TypeError('Invalid color index: {}'.format(index))
 
-    @property
-    def code(self):
-        return str(self.index)
-
     def __repr__(self):
         return '{name}({index})'.format(
                 name=self.__class__.__name__,
@@ -156,6 +152,21 @@ class Color8(Color):
 
     def __int__(self):
         return self.index
+
+    @property
+    def code(self):
+        if self.index is None:
+            return ''
+        return str(self.index)
+
+    def to_256(self):
+        return Color256(self.index)
+
+    def to_rgb(self):
+        return Color256(self.index).to_rgb()
+
+    def to_hsv(self):
+        return self.to_rgb().to_hsv()
 
 
 @export
@@ -174,6 +185,9 @@ class Color256(Color):
         return '{name}({index})'.format(
                 name=self.__class__.__name__,
                 index=self.index)
+
+    def __int__(self):
+        return self.index
 
     @property
     def code(self):
@@ -206,9 +220,6 @@ class Color256(Color):
 
     def to_hsv(self):
         return self.to_rgb().to_hsv()
-
-    def __int__(self):
-        return self.index
 
 
 @export

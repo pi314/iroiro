@@ -126,15 +126,79 @@ class TestColorTraits(TestCase):
 
 
 class TestColor8(TestCase):
+    def test_copy_ctor(self):
+        red = Color8(1)
+        other = Color8(red)
+        self.eq(red, other)
+
+    def test_color8_empty(self):
+        self.eq(Color8().seq, '')
+
     def test_color8_index(self):
         for i in range(8):
             self.eq(Color8(i).index, i)
 
+        for i in range(8):
+            self.eq(int(Color8(i)), i)
+
+    def test_color8_value_range_check(self):
+        with self.raises(TypeError):
+            Color8(10)
+
+    def test_color8_repr(self):
+        for i in range(8):
+            self.eq(repr(Color8(i)), 'Color8({})'.format(i))
+
+    def test_color8_seq(self):
+        for i in range(8):
+            self.eq(Color8(i).seq, '\033[3{}m'.format(i))
+
+    def test_color8_to_color256(self):
+        for i in range(8):
+            self.eq(Color8(i).to_256(), Color256(i))
+
+    def test_color8_to_rgb(self):
+        self.eq(Color8(0).to_rgb(), ColorRGB(0x00, 0x00, 0x00))
+        self.eq(Color8(1).to_rgb(), ColorRGB(0x80, 0x00, 0x00))
+        self.eq(Color8(2).to_rgb(), ColorRGB(0x00, 0x80, 0x00))
+        self.eq(Color8(3).to_rgb(), ColorRGB(0x80, 0x80, 0x00))
+        self.eq(Color8(4).to_rgb(), ColorRGB(0x00, 0x00, 0x80))
+        self.eq(Color8(5).to_rgb(), ColorRGB(0x80, 0x00, 0x80))
+        self.eq(Color8(6).to_rgb(), ColorRGB(0x00, 0x80, 0x80))
+        self.eq(Color8(7).to_rgb(), ColorRGB(0xC0, 0xC0, 0xC0))
+
+    def test_color8_to_hsv(self):
+        for i in range(8):
+            self.eq(Color8(i).to_hsv(), Color8(i).to_rgb().to_hsv())
+
 
 class TestColor256(TestCase):
+    def test_copy_ctor(self):
+        red = Color256(1)
+        other = Color256(red)
+        self.eq(red, other)
+
+    def test_color256_empty(self):
+        self.eq(Color256().seq, '')
+
     def test_color256_index(self):
         for i in range(256):
             self.eq(color(i).index, i)
+
+        for i in range(256):
+            self.eq(int(color(i)), i)
+
+    def test_color256_value_range_check(self):
+        with self.raises(TypeError):
+            Color256(300)
+
+    def test_color256_repr(self):
+        for i in range(256):
+            self.eq(repr(Color256(i)), 'Color256({})'.format(i))
+
+    def test_color256_seq(self):
+        for i in range(256):
+            self.eq(Color256(i).seq, '\033[38;5;{}m'.format(i))
 
     def test_color256_to_rgb(self):
         self.eq(color(0).to_rgb(), ColorRGB(0x00, 0x00, 0x00))
@@ -158,28 +222,16 @@ class TestColor256(TestCase):
         self.eq(color(237).to_rgb(), ColorRGB(0x3A, 0x3A, 0x3A))
 
     def test_color256_to_hsv(self):
-        self.eq(color(0).to_hsv(), color(0).to_rgb().to_hsv())
-        self.eq(color(1).to_hsv(), color(1).to_rgb().to_hsv())
-        self.eq(color(2).to_hsv(), color(2).to_rgb().to_hsv())
-        self.eq(color(3).to_hsv(), color(3).to_rgb().to_hsv())
-        self.eq(color(4).to_hsv(), color(4).to_rgb().to_hsv())
-        self.eq(color(5).to_hsv(), color(5).to_rgb().to_hsv())
-        self.eq(color(6).to_hsv(), color(6).to_rgb().to_hsv())
-        self.eq(color(7).to_hsv(), color(7).to_rgb().to_hsv())
-        self.eq(color(8).to_hsv(), color(8).to_rgb().to_hsv())
-        self.eq(color(9).to_hsv(), color(9).to_rgb().to_hsv())
-        self.eq(color(10).to_hsv(), color(10).to_rgb().to_hsv())
-        self.eq(color(11).to_hsv(), color(11).to_rgb().to_hsv())
-        self.eq(color(12).to_hsv(), color(12).to_rgb().to_hsv())
-        self.eq(color(13).to_hsv(), color(13).to_rgb().to_hsv())
-        self.eq(color(14).to_hsv(), color(14).to_rgb().to_hsv())
-        self.eq(color(15).to_hsv(), color(15).to_rgb().to_hsv())
-        self.eq(color(208).to_hsv(), color(208).to_rgb().to_hsv())
-        self.eq(color(232).to_hsv(), color(232).to_rgb().to_hsv())
-        self.eq(color(237).to_hsv(), color(237).to_rgb().to_hsv())
+        for i in range(256):
+            self.eq(color(i).to_hsv(), color(i).to_rgb().to_hsv())
 
 
 class TestColorRGB(TestCase):
+    def test_copy_ctor(self):
+        red = ColorRGB(160, 90, 0)
+        other = ColorRGB(red)
+        self.eq(red, other)
+
     def test_rgb_empty(self):
         self.eq(ColorRGB().seq, '')
 
@@ -198,7 +250,7 @@ class TestColorRGB(TestCase):
 
         self.eq(int(some_color), 0xA05A00)
 
-    def test_value_range_check(self):
+    def test_rgb_value_range_check(self):
         with self.raises(TypeError):
             ColorRGB(300, 300, 300)
 
