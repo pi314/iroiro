@@ -14,30 +14,63 @@ from .internal_utils import exporter
 export, __all__ = exporter()
 
 
-def _apply(fg, bg, *args):
+def _apply(em, fg, bg, *args):
     s = ' '.join(str(arg) for arg in args)
 
-    seq = ';'.join(filter(None, (
+    code = ';'.join(filter(None, (
+        em.code if em is not None and em.code else None,
         ('3' + fg.code) if fg is not None and fg.code else None,
         ('4' + bg.code) if bg is not None and bg.code else None,
         )))
 
-    # modesoff SGR0         Turn off character attributes ^[[m
-    # modesoff SGR0         Turn off character attributes ^[[0m
-    # bold SGR1             Turn bold mode on             ^[[1m
-    # lowint SGR2           Turn low intensity mode on    ^[[2m
-    # underline SGR4        Turn underline mode on        ^[[4m
-    # blink SGR5            Turn blinking mode on         ^[[5m
-    # reverse SGR7          Turn reverse video on         ^[[7m
-    # invisible SGR8        Turn invisible text mode on   ^[[8m
-
-    start = ('\033[' + seq + 'm') if seq else ''
+    start = ('\033[' + code + 'm') if code else ''
     end = '\033[m' if start else ''
 
     if not args:
         return start
 
     return start + s + end
+
+
+@export
+class Emphasis:
+    def __init__(self, bold=False, lowint=False, underline=False,
+                 blink=False, reverse=False, invisible=False):
+        self.bold = bold
+        self.lowint = lowint
+        self.underline = underline
+        self.blink = blink
+        self.reverse = reverse
+        self.invisible = invisible
+
+    @property
+    def code(self):
+        return ';'.join(filter(None, (
+                '1' if self.bold else None,
+                '2' if self.lowint else None,
+                '4' if self.underline else None,
+                '5' if self.blink else None,
+                '7' if self.reverse else None,
+                '8' if self.invisible else None,
+                )))
+
+    def __repr__(self):
+        ...
+
+    def __int__(self):
+        ...
+
+    def __eq__(self, other):
+        ...
+
+    def __call__(self, *args):
+        ...
+
+    def __str__(self):
+        ...
+
+    def __or__(self, other):
+        ...
 
 
 @export
@@ -61,7 +94,7 @@ class Color(abc.ABC):
 
     @property
     def seq(self):
-        return _apply(self, None)
+        return _apply(None, self, None)
 
     @abc.abstractmethod
     def __repr__(self): # pragma: no cover
@@ -78,13 +111,13 @@ class Color(abc.ABC):
         return self.fg(*args)
 
     def fg(self, *args):
-        return _apply(self, None, *args)
+        return _apply(None, self, None, *args)
 
     def bg(self, *args, **kwargs):
-        return _apply(None, self, *args)
+        return _apply(None, None, self, *args)
 
     def __str__(self):
-        return _apply(self, None) or '\033[m'
+        return _apply(None, self, None) or '\033[m'
 
     def __invert__(self):
         return ColorCompound(bg=self)
@@ -438,7 +471,7 @@ class ColorCompound:
 
     @property
     def seq(self):
-        return _apply(self.fg, self.bg)
+        return _apply(None, self.fg, self.bg)
 
     def __repr__(self):
         return '{clsname}(fg={fg}, bg={bg})'.format(
@@ -446,10 +479,10 @@ class ColorCompound:
                 fg=repr(self.fg), bg=repr(self.bg))
 
     def __call__(self, *args):
-        return _apply(self.fg, self.bg, *args)
+        return _apply(None, self.fg, self.bg, *args)
 
     def __str__(self):
-        return _apply(self.fg, self.bg) or '\033[m'
+        return _apply(None, self.fg, self.bg) or '\033[m'
 
     def __or__(self, other):
         fg = other.fg if other.fg.code else self.fg
