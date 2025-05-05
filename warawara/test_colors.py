@@ -119,6 +119,7 @@ class TestColorFacade(TestCase):
             ColorRGB(True)
 
     def test_color_parse(self):
+        self.eq(color(''), paint(fg=None, bg=None))
         self.eq(color('\033[38;5;214m'), paint(fg=color(214)))
         self.eq(color('\033[48;5;214m'), paint(bg=color(214)))
         self.eq(color('\033[38;5;214;48;5;208m'), paint(fg=color(214), bg=color(208)))
@@ -529,13 +530,11 @@ class TestPaint(TestCase):
     def test_repr(self):
         self.true(repr(paint()).startswith('ColorCompound'))
 
-    def test_or(self):
-        self.eq(black | (~yellow), paint(fg=0, bg=11))
-
-        ry = red / yellow
-        ig = ~green
-        ryig = ry | ig
-        self.eq(ryig, paint(fg=red, bg=green))
+    def test_eq(self):
+        self.eq(paint(fg=42), color(42))
+        self.eq(paint(fg=0, bg=11), paint(fg=0, bg=11))
+        self.ne(paint(fg=0, bg=11), None)
+        self.ne(paint(fg=0, bg=11), 42)
 
     def test_div(self):
         ry = red / yellow
@@ -544,12 +543,30 @@ class TestPaint(TestCase):
         self.eq(rybg, paint(fg=red, bg=blue))
         self.eq(rybg('text'), '\033[38;5;9;48;5;12mtext\033[m')
 
+    def test_or(self):
+        self.eq(black | (~yellow), paint(fg=0, bg=11))
+
+        ry = red / yellow
+        ig = ~green
+        ryig = ry | ig
+        self.eq(ryig, paint(fg=red, bg=green))
+
+        ry = red / yellow
+        my = ry | magenta
+        self.eq(my, magenta / yellow)
+
     def test_invert(self):
         ry = red / yellow
         bg = blue / green
         rybg = ry / bg
         self.eq(~rybg, paint(fg=blue, bg=red))
         self.eq((~rybg)('text'), '\033[38;5;12;48;5;9mtext\033[m')
+
+    def test_select_ground(self):
+        ry = red / yellow
+        self.eq(paint(fg=ry), red)
+        self.eq(paint(fg=ry), paint(fg=red))
+        self.eq(paint(bg=ry), paint(bg=yellow))
 
 
 class TestDecolor(TestCase):

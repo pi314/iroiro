@@ -504,8 +504,19 @@ class ColorHSV(Color):
 @export
 class ColorCompound:
     def __init__(self, fg=None, bg=None):
-        self.fg = color(fg)
-        self.bg = color(bg)
+        if fg is None:
+            self.fg = None
+        elif isinstance(fg, self.__class__):
+            self.fg = fg.fg
+        else:
+            self.fg = color(fg)
+
+        if bg is None:
+            self.bg = None
+        elif isinstance(bg, self.__class__):
+            self.bg = bg.bg
+        else:
+            self.bg = color(bg)
 
     @property
     def seq(self):
@@ -523,19 +534,31 @@ class ColorCompound:
         return _apply(None, self.fg, self.bg) or '\033[m'
 
     def __or__(self, other):
-        fg = other.fg if other.fg.code else self.fg
-        bg = other.bg if other.bg.code else self.bg
+        if other is None:
+            fg = None
+            bg = None
+        elif isinstance(other, self.__class__):
+            fg = other.fg
+            bg = other.bg
+        elif isinstance(other, Color):
+            fg = other
+            bg = None
 
-        return ColorCompound(fg=fg, bg=bg)
+        fg = fg or self.fg
+        bg = bg or self.bg
+
+        return self.__class__(fg=fg, bg=bg)
 
     def __truediv__(self, other):
-        return ColorCompound(fg=self.fg, bg=other.fg)
+        return self.__class__(fg=self.fg, bg=other.fg)
 
     def __invert__(self):
-        return ColorCompound(fg=self.bg, bg=self.fg)
+        return self.__class__(fg=self.bg, bg=self.fg)
 
     def __eq__(self, other):
-        return self.seq == other.seq
+        if isinstance(other, (self.__class__, Color)):
+            return self.seq == other.seq
+        return self.seq == other
 
 @export
 def paint(fg=None, bg=None):
