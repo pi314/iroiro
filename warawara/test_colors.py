@@ -56,6 +56,18 @@ class TestEmphasis(TestCase):
         self.eq(bu(), '\033[1;4m')
         self.eq(bu('wara'), '\033[1;4mwara\033[m')
 
+    def test_emphasis_or_with_color(self):
+        bo = bold | orange
+        self.eq(bo('wara'), '\033[1;38;5;214mwara\033[m')
+
+    def test_emphasis_or_with_paints(self):
+        boy = bold | (orange / yellow)
+        self.eq(boy('wara'), '\033[1;38;5;214;48;5;11mwara\033[m')
+
+    def test_emphasis_or_with_invalid_types(self):
+        with self.raises(TypeError):
+            boy = bold | 'wah'
+
     def test_emphasis_repr(self):
         self.true(repr(Emphasis()).startswith('Emphasis'))
 
@@ -580,6 +592,10 @@ class TestPaint(TestCase):
         self.eq(paint(fg=ry), red)
         self.eq(paint(fg=ry), paint(fg=red))
         self.eq(paint(bg=ry), paint(bg=yellow))
+
+    def test_type_check(self):
+        with self.raises(TypeError):
+            ColorCompound(em='wah', fg=None, bg=None)
 
 
 class TestDecolor(TestCase):

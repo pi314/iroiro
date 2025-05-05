@@ -89,9 +89,22 @@ class Emphasis:
         return self.seq or '\033[m'
 
     def __or__(self, rhs):
-        attrs = {attr: (getattr(rhs, attr) or getattr(self, attr))
-                 for attr in Emphasis.ATTR_CODE}
-        return Emphasis(**attrs)
+        if rhs is None:
+            return self
+
+        if isinstance(rhs, self.__class__):
+            attrs = {attr: (getattr(rhs, attr) or getattr(self, attr))
+                     for attr in Emphasis.ATTR_CODE}
+            return Emphasis(**attrs)
+
+        elif isinstance(rhs, Color):
+            return ColorCompound(em=self, fg=rhs, bg=None)
+
+        elif isinstance(rhs, ColorCompound):
+            return ColorCompound(em=self | rhs.em, fg=rhs.fg, bg=rhs.bg)
+
+        raise TypeError('unsupported operand types for |: {} and {}'.format(
+            type(self).__name__, type(rhs).__name__))
 
 
 named_emphasis = ('bold', 'lowint', 'underline', 'blink', 'reverse', 'invisible')
@@ -517,7 +530,14 @@ class ColorHSV(Color):
 
 @export
 class ColorCompound:
-    def __init__(self, fg=None, bg=None):
+    def __init__(self, *, em=None, fg=None, bg=None):
+        if em is None:
+            self.em = None
+        elif isinstance(em, Emphasis):
+            self.em = em
+        else:
+            raise TypeError('Invalid em: {}'.format(em))
+
         if fg is None:
             self.fg = None
         elif isinstance(fg, self.__class__):
@@ -534,7 +554,7 @@ class ColorCompound:
 
     @property
     def seq(self):
-        return _apply(None, self.fg, self.bg)
+        return _apply(self.em, self.fg, self.bg)
 
     def __repr__(self):
         return '{clsname}(fg={fg}, bg={bg})'.format(
@@ -542,10 +562,10 @@ class ColorCompound:
                 fg=repr(self.fg), bg=repr(self.bg))
 
     def __call__(self, *args):
-        return _apply(None, self.fg, self.bg, *args)
+        return _apply(self.em, self.fg, self.bg, *args)
 
     def __str__(self):
-        return _apply(None, self.fg, self.bg) or '\033[m'
+        return self.seq or '\033[m'
 
     def __or__(self, other):
         if isinstance(other, self.__class__):
