@@ -34,7 +34,16 @@ def _apply(em, fg, bg, *args):
 
 @export
 class Emphasis:
-    def __init__(self, bold=False, lowint=False, underline=False,
+    ATTR_CODE = {
+            'bold': 1,
+            'lowint': 2,
+            'underline': 4,
+            'blink': 5,
+            'reverse': 7,
+            'invisible': 8,
+            }
+
+    def __init__(self, *, bold=False, lowint=False, underline=False,
                  blink=False, reverse=False, invisible=False):
         self.bold = bold
         self.lowint = lowint
@@ -45,32 +54,61 @@ class Emphasis:
 
     @property
     def code(self):
-        return ';'.join(filter(None, (
-                '1' if self.bold else None,
-                '2' if self.lowint else None,
-                '4' if self.underline else None,
-                '5' if self.blink else None,
-                '7' if self.reverse else None,
-                '8' if self.invisible else None,
-                )))
+        return ';'.join(str(Emphasis.ATTR_CODE[attr])
+                        for attr in Emphasis.ATTR_CODE
+                        if getattr(self, attr)
+                        )
+
+    @property
+    def seq(self):
+        return _apply(self, None, None)
 
     def __repr__(self):
-        ...
+        attrs = []
+        return '{name}({attrs})'.format(
+                name=self.__class__.__name__,
+                attrs=', '.join('{}=True'.format(attr)
+                                for attr in Emphasis.ATTR_CODE
+                                if getattr(self, attr)
+                                )
+                )
 
     def __int__(self):
-        ...
+        ret = 0
+        for attr, code in Emphasis.ATTR_CODE.items():
+            ret |= (1 if getattr(self, attr) else 0) << (code - 1)
+        return ret
 
     def __eq__(self, other):
-        ...
+        return isinstance(other, self.__class__) and self.code == other.code
 
     def __call__(self, *args):
-        ...
+        return _apply(self, None, None, *args)
 
     def __str__(self):
-        ...
+        return self.seq or '\033[m'
 
-    def __or__(self, other):
-        ...
+    def __or__(self, rhs):
+        attrs = {attr: (getattr(rhs, attr) or getattr(self, attr))
+                 for attr in Emphasis.ATTR_CODE}
+        return Emphasis(**attrs)
+
+
+named_emphasis = ('bold', 'lowint', 'underline', 'blink', 'reverse', 'invisible')
+bold = Emphasis(bold=True)
+lowint = Emphasis(lowint=True)
+underline = Emphasis(underline=True)
+blink = Emphasis(blink=True)
+reverse = Emphasis(reverse=True)
+invisible = Emphasis(invisible=True)
+
+def _setup_named_emphasis():
+    for name in named_emphasis:
+        em = Emphasis(**{name: True})
+        globals()[name] = em
+        export(name)
+_setup_named_emphasis()
+del _setup_named_emphasis
 
 
 @export
