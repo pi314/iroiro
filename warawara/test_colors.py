@@ -132,9 +132,18 @@ class TestColorFacade(TestCase):
 
     def test_color_parse(self):
         self.eq(color(''), paint(fg=None, bg=None))
+        self.eq(color('\033'), paint(fg=None, bg=None))
+        self.eq(color('\033{'), paint(fg=None, bg=None))
+        self.eq(color('\033[38z'), paint(fg=None, bg=None))
+        self.eq(color('\033[m'), paint(fg=None, bg=None))
         self.eq(color('\033[38;5;214m'), paint(fg=color(214)))
         self.eq(color('\033[48;5;214m'), paint(bg=color(214)))
-        self.eq(color('\033[38;5;214;48;5;208m'), paint(fg=color(214), bg=color(208)))
+        self.eq(color('\033[38;5;214;48;5;208m\033[38;5;214;48;5;208m'), paint(fg=color(214), bg=color(208)))
+        self.eq(color('\033[1;4;5;38;5;214;48;5;208m'), paint(em=Emphasis(bold=True, underline=True, blink=True),
+                                                              fg=color(214),
+                                                              bg=color(208)))
+        self.eq(color('\033[1;31m'), Color8(1) | bold)
+        self.eq(color('\033[31;35;37m'), Color8(7))
 
 
 class TestColorTraits(TestCase):

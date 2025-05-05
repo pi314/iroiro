@@ -557,8 +557,9 @@ class ColorCompound:
         return _apply(self.em, self.fg, self.bg)
 
     def __repr__(self):
-        return '{clsname}(fg={fg}, bg={bg})'.format(
+        return '{clsname}(em={em} fg={fg}, bg={bg})'.format(
                 clsname=self.__class__.__name__,
+                em=repr(self.em),
                 fg=repr(self.fg), bg=repr(self.bg))
 
     def __call__(self, *args):
@@ -606,8 +607,8 @@ class ColorCompound:
         return self.seq == other
 
 @export
-def paint(fg=None, bg=None):
-    return ColorCompound(fg=fg, bg=bg)
+def paint(em=None, fg=None, bg=None):
+    return ColorCompound(em=em, fg=fg, bg=bg)
 
 
 export('nocolor')
@@ -766,6 +767,7 @@ def _parse(seq):
 
             if char not in ('m', ';'):
                 token = ''
+                prefix = 0
                 continue
 
             if token:
@@ -776,12 +778,12 @@ def _parse(seq):
                 continue
 
             if more[0] in (1, 2, 4, 5, 7, 8):
-                attr['em'] = attr['em'].add(more[0])
+                attr['em'].add(more[0])
                 more = []
                 continue
 
             if (30 <= more[0] <= 37) or (40 <= more[0] <= 47):
-                attr['fg' if more[0] < 40 else 'bg'] = more[0]
+                attr['fg' if more[0] < 40 else 'bg'] = [more[0]]
                 more = []
                 continue
 
@@ -797,17 +799,22 @@ def _parse(seq):
         else:
             prefix = 0
 
-    ret = {'fg': None, 'bg': None}
+    ret = {'em': None, 'fg': None, 'bg': None}
+
+    ret['em'] = Emphasis(**{name: True
+                            for name, code in Emphasis.ATTR_CODE.items()
+                            if code in attr['em']})
+
     for ground in ('fg', 'bg'):
         seq = attr[ground]
-        if len(seq) == 1 and 30 <= seq[0] <= 37:
-            ret[ground] = Color8(seq[0])
+        if len(seq) == 1 and ((30 <= seq[0] <= 37) or (40 <= seq[0] <= 47)):
+            ret[ground] = Color8(seq[0] % 10)
         elif len(seq) == 3 and seq[0] in (38, 48) and seq[1] == 5:
             ret[ground] = Color256(seq[2])
         elif len(seq) == 5 and seq[0] in (38, 48) and seq[1] == 2:
             ret[ground] = ColorRGB(seq[2:5])
 
-    return ColorCompound(fg=ret['fg'], bg=ret['bg'])
+    return ColorCompound(em=ret['em'], fg=ret['fg'], bg=ret['bg'])
 
 
 @export
