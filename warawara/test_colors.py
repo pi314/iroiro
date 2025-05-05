@@ -202,6 +202,10 @@ class TestColorTraits(TestCase):
             for B in colors_under_test:
                 self.eq(A | B, B)
 
+    def test_or_with_emphasis(self):
+        ob = orange | bold
+        self.eq(ob('wah'), '\033[1;38;5;214mwah\033[m')
+
 
 class TestColor8(TestCase):
     def test_copy_ctor(self):
@@ -574,11 +578,17 @@ class TestPaint(TestCase):
         my = ry | magenta
         self.eq(my, magenta / yellow)
 
+        myb = my | bold
+        self.eq(myb, '\033[1;38;5;13;48;5;11m')
+
         with self.raises(TypeError):
             ry | None
 
         with self.raises(TypeError):
             ry | 42
+
+        self.eq(ry | bold, '\033[1;38;5;9;48;5;11m')
+        self.eq(ry | bold | underline, '\033[1;4;38;5;9;48;5;11m')
 
     def test_invert(self):
         ry = red / yellow

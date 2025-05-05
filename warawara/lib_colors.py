@@ -569,19 +569,30 @@ class ColorCompound:
 
     def __or__(self, other):
         if isinstance(other, self.__class__):
+            em = other.em
             fg = other.fg
             bg = other.bg
         elif isinstance(other, Color):
+            em = None
             fg = other
+            bg = None
+        elif isinstance(other, Emphasis):
+            em = other
+            fg = None
             bg = None
         else:
             raise TypeError('unsupported operand types for |: {} and {}'.format(
                 type(self).__name__, type(other).__name__))
 
+        if em is None:
+            em = self.em
+        elif isinstance(self.em, Emphasis):
+            em = em | self.em
+
         fg = fg or self.fg
         bg = bg or self.bg
 
-        return self.__class__(fg=fg, bg=bg)
+        return self.__class__(em=em, fg=fg, bg=bg)
 
     def __truediv__(self, other):
         return self.__class__(fg=self.fg, bg=other.fg)
