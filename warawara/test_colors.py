@@ -207,8 +207,12 @@ class TestColor8(TestCase):
         for i in range(8):
             self.eq(int(Color8(i)), i)
 
-    def test_color8_value_range_check(self):
+    def test_color8_value_type_check(self):
         with self.raises(TypeError):
+            Color8('wah')
+
+    def test_color8_value_range_check(self):
+        with self.raises(ValueError):
             Color8(10)
 
     def test_color8_repr(self):
@@ -254,8 +258,12 @@ class TestColor256(TestCase):
         for i in range(256):
             self.eq(int(color(i)), i)
 
-    def test_color256_value_range_check(self):
+    def test_color256_value_type_check(self):
         with self.raises(TypeError):
+            Color256('wah')
+
+    def test_color256_value_range_check(self):
+        with self.raises(ValueError):
             Color256(300)
 
     def test_color256_repr(self):

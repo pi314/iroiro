@@ -214,10 +214,17 @@ class Color8(Color):
         if isinstance(index, self.__class__):
             index = index.index
 
-        self.index = index
+        no = None
+        if index is None:
+            pass
+        elif isinstance(index, bool) or not isinstance(index, int):
+            no = TypeError
+        elif not (0 <= index <= 7):
+            no = ValueError
+        if no:
+            raise no('Invalid color index: {}'.format(index))
 
-        if not self.index is None and not (0 <= self.index <= 7):
-            raise TypeError('Invalid color index: {}'.format(index))
+        self.index = index
 
     def __repr__(self):
         return '{name}({index})'.format(
@@ -250,10 +257,17 @@ class Color256(Color):
         if isinstance(index, self.__class__):
             index = index.index
 
-        self.index = index
+        no = None
+        if index is None:
+            pass
+        elif isinstance(index, bool) or not isinstance(index, int):
+            no = TypeError
+        elif not is_uint8(index):
+            no = ValueError
+        if no:
+            raise no('Invalid color index: {}'.format(index))
 
-        if not self.index is None and not is_uint8(index):
-            raise TypeError('Invalid color index: {}'.format(index))
+        self.index = index
 
     def __repr__(self):
         return '{name}({index})'.format(
