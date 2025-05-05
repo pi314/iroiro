@@ -534,15 +534,15 @@ class ColorCompound:
         return _apply(None, self.fg, self.bg) or '\033[m'
 
     def __or__(self, other):
-        if other is None:
-            fg = None
-            bg = None
-        elif isinstance(other, self.__class__):
+        if isinstance(other, self.__class__):
             fg = other.fg
             bg = other.bg
         elif isinstance(other, Color):
             fg = other
             bg = None
+        else:
+            raise TypeError('unsupported operand types for |: {} and {}'.format(
+                type(self).__name__, type(other).__name__))
 
         fg = fg or self.fg
         bg = bg or self.bg

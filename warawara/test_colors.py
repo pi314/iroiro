@@ -551,9 +551,14 @@ class TestPaint(TestCase):
         ryig = ry | ig
         self.eq(ryig, paint(fg=red, bg=green))
 
-        ry = red / yellow
         my = ry | magenta
         self.eq(my, magenta / yellow)
+
+        with self.raises(TypeError):
+            ry | None
+
+        with self.raises(TypeError):
+            ry | 42
 
     def test_invert(self):
         ry = red / yellow
