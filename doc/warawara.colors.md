@@ -16,21 +16,34 @@ color(index)
 color(R, G, B)
 color('#RRGGBB')
 color('@H,S,V')
+color('...')
 ```
 
 __Examples__
 ```python
-color()              # Color256: empty
-color(214)           # Color256: darkorange
-color(255, 175, 0)   # ColorRGB: orange
-color('#FFAF00')     # ColorRGB: orange
-color('@41,100,100') # ColorHSV: orange
+color()                 # Color256: empty
+color(214)              # Color256: darkorange
+color(255, 175, 0)      # ColorRGB: orange
+color('#FFAF00')        # ColorRGB: orange
+color('@41,100,100')    # ColorHSV: orange
+color('\033[38;5;214m') # paint(fg=Color256(214))
 ```
 
 If the argument does not have correct format, `TypeError` is raised.
 
 See [Color256](#class-color256), [ColorRGB](#class-colorrgb),
 and [ColorHSV](#class-colorhsv) for more details.
+
+
+## Class `Emphasis`
+
+Represent special attributes (bold, underline, etc)
+
+__Parameters__
+```python
+Emphasis()
+Emphasis(1, 2, 4, 5, 7, 8)
+Emphasis(bold=True, lowint=True, underline=True, blink=True, reverse=True, invisible=True)
 
 
 ## Class `Color`

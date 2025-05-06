@@ -12,6 +12,14 @@ class TestEmphasis(TestCase):
         self.eq(reverse, Emphasis(reverse=True))
         self.eq(invisible, Emphasis(invisible=True))
 
+    def test_builtin_from_int(self):
+        self.eq(bold, Emphasis(1))
+        self.eq(lowint, Emphasis(2))
+        self.eq(underline, Emphasis(4))
+        self.eq(blink, Emphasis(5))
+        self.eq(reverse, Emphasis(7))
+        self.eq(invisible, Emphasis(8))
+
     def test_emphasis_seq(self):
         self.eq(bold.seq, '\033[1m')
         self.eq(lowint.seq, '\033[2m')
