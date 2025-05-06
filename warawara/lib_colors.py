@@ -43,14 +43,18 @@ class Emphasis:
             'invisible': 8,
             }
 
-    def __init__(self, *, bold=False, lowint=False, underline=False,
+    def __init__(self, *codes, bold=False, lowint=False, underline=False,
                  blink=False, reverse=False, invisible=False):
-        self.bold = bold
-        self.lowint = lowint
-        self.underline = underline
-        self.blink = blink
-        self.reverse = reverse
-        self.invisible = invisible
+        if codes:
+            for name, code in Emphasis.ATTR_CODE.items():
+                setattr(self, name, code in codes)
+        else:
+            self.bold = bold
+            self.lowint = lowint
+            self.underline = underline
+            self.blink = blink
+            self.reverse = reverse
+            self.invisible = invisible
 
     @property
     def code(self):
@@ -740,81 +744,87 @@ def decolor(s):
     return color_esc_seq_regex.sub('', s)
 
 
-def _parse(seq):
-    prefix = 0
-    token = ''
-    more = []
-
-    attr = {
-            'em': set(),
-            'fg': [],
-            'bg': [],
-            }
+def _tokenize(seq):
+    matching = 0
+    buf = ''
     for char in seq:
         if char == '\033':
-            prefix = 1
-            more = []
+            matching = 1
+            buf = ''
             continue
 
-        if prefix == 1 and char == '[':
-            prefix = 2
+        if matching == 1 and char == '[':
+            matching = 2
+            buf = ''
             continue
 
-        elif prefix == 2:
-            if char in '0123456789':
-                token += char
+        elif matching == 2:
+            if char not in '0123456789;m':
+                buf = ''
+                matching = 0
                 continue
 
-            if char not in ('m', ';'):
-                token = ''
-                prefix = 0
+            if char == 'm':
+                empty = True
+                for token in buf.split(';'):
+                    if token:
+                        empty = False
+                        yield int(token, 10)
+                if empty:
+                    yield 0
+                buf = ''
+                matching = 0
                 continue
 
-            if token:
-                more.append(int(token, 10))
-                token = ''
-
-            if not more:
-                continue
-
-            if more[0] in (1, 2, 4, 5, 7, 8):
-                attr['em'].add(more[0])
-                more = []
-                continue
-
-            if (30 <= more[0] <= 37) or (40 <= more[0] <= 47):
-                attr['fg' if more[0] < 40 else 'bg'] = [more[0]]
-                more = []
-                continue
-
-            elif more[0] in (38, 48):
-                if len(more) == 1:
-                    continue
-                elif more[1] == 5 and len(more) < 3:
-                    continue
-                elif more[1] == 5 and len(more) >= 3:
-                    attr['fg' if more[0] < 40 else 'bg'] = more[0:3]
-                    more = more[3:]
+            else:
+                buf += char
 
         else:
-            prefix = 0
+            matching = 0
 
-    ret = {'em': None, 'fg': None, 'bg': None}
 
-    ret['em'] = Emphasis(**{name: True
-                            for name, code in Emphasis.ATTR_CODE.items()
-                            if code in attr['em']})
+def _parse(seq):
+    attr = {}
 
-    for ground in ('fg', 'bg'):
-        seq = attr[ground]
-        if len(seq) == 1 and ((30 <= seq[0] <= 37) or (40 <= seq[0] <= 47)):
-            ret[ground] = Color8(seq[0] % 10)
-        elif len(seq) == 3 and seq[0] in (38, 48) and seq[1] == 5:
-            ret[ground] = Color256(seq[2])
-        elif len(seq) == 5 and seq[0] in (38, 48) and seq[1] == 2:
-            ret[ground] = ColorRGB(seq[2:5])
+    tokens = list(_tokenize(seq))
+    codes = []
+    while tokens:
+        if tokens[0] == 0:
+            tokens.pop(0)
+            attr = {}
+            continue
 
-    return ColorCompound(em=ret['em'], fg=ret['fg'], bg=ret['bg'])
+        if tokens[0] in (1, 2, 4, 5, 7, 8):
+            attr['em'] = attr.get('em', Emphasis()) | Emphasis(tokens.pop(0))
+            continue
+
+        if (30 <= tokens[0] <= 37) or (40 <= tokens[0] <= 47):
+            t = tokens.pop(0)
+            attr['fg' if t < 40 else 'bg'] = Color8(t % 10)
+            continue
+
+        if tokens[0] not in (38, 48):
+            tokens.pop(0)
+            continue
+        ground = tokens.pop(0)
+
+        if not tokens or tokens[0] not in (2, 5):
+            if tokens:
+                tokens.pop(0)
+            continue
+        color_type = tokens.pop(0)
+
+        if color_type == 5:
+            if tokens:
+                attr['fg' if ground < 40 else 'bg'] = Color256(tokens.pop(0))
+            continue
+
+        # color_type == 2
+        if tokens and len(tokens) >= 3:
+            attr['fg' if ground < 40 else 'bg'] = ColorRGB(*tokens[:3])
+            tokens = tokens[3:]
+
+    return ColorCompound(**attr)
 
 
 @export
