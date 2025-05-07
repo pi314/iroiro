@@ -10,10 +10,10 @@ class TestColorHSV(TestCase):
         other = ColorHSV(red)
         self.eq(red, other)
 
-    def test_hsv_empty(self):
+    def test_empty(self):
         self.eq(ColorHSV().seq, '')
 
-    def test_hsv_parse_str(self):
+    def test_parse_str(self):
         self.eq(ColorHSV('@0,100,100'), ColorHSV(0, 100, 100))
         self.eq(ColorHSV('@41,100,100'), ColorHSV(41, 100, 100))
         self.eq(ColorHSV('@401,100,100'), ColorHSV(41, 100, 100))
@@ -27,7 +27,7 @@ class TestColorHSV(TestCase):
         red = ColorHSV('@0,100,100')
         self.true(red.to_hsv() is red)
 
-    def test_hsv(self):
+    def test(self):
         some_color = ColorHSV(420, 90.5, 0.5)
         self.eq(some_color.h, 60)
         self.eq(some_color.s, 90.5)
@@ -51,7 +51,7 @@ class TestColorHSV(TestCase):
         with self.raises(TypeError):
             ColorHSV(0, 0, 101, 0)
 
-    def test_hsv_mul(self):
+    def test_mul(self):
         some_color = ColorHSV(180, 100, 100) * 2
         self.eq(some_color.h, 0)
         self.eq(some_color.s, 200)
@@ -61,16 +61,16 @@ class TestColorHSV(TestCase):
         some_color = ColorHSV(0, 100, 100) * 0.8
         self.eq(str(some_color), '\033[38;2;204;41;41m')
 
-    def test_hsv_div(self):
+    def test_div(self):
         some_color = ColorHSV(160, 90, 0) // 2
         self.eq(some_color, ColorHSV(80, 45, 0))
 
-    def test_hsv_overflow(self):
+    def test_overflow(self):
         some_color = ColorHSV(160, 90, 100) * 2
         self.eq(str(some_color), '\033[38;2;255;0;170m')
         self.eq(int(some_color), 320100100)
 
-    def test_hsv_average(self):
+    def test_average(self):
         red = ColorHSV(360, 100, 100)
         yellow = ColorHSV(60, 100, 100)
 
@@ -82,7 +82,7 @@ class TestColorHSV(TestCase):
         orange = d_orange // 2
         self.eq(orange, ColorHSV(30, 100, 100))
 
-    def test_hsv_format(self):
+    def test_format(self):
         lime = ColorHSV(120, 100, 100)
         self.eq('{}'.format(lime), str(ColorRGB(0, 255, 0)))
         self.eq('{:#}'.format(lime), '(@120, 100%, 100%)')
