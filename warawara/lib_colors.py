@@ -32,8 +32,20 @@ def _apply(em, fg, bg, *args):
     return start + s + end
 
 
+class AbstractColor(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def seq(self): # pragma: no cover
+        pass
+
+    def __eq__(self, other):
+        if isinstance(other, AbstractColor):
+            return self.seq == other.seq
+        return self.seq == other
+
+
 @export
-class Emphasis:
+class Emphasis(AbstractColor):
     ATTR_CODE = {
             'bold': 1,
             'lowint': 2,
@@ -83,9 +95,6 @@ class Emphasis:
             ret |= (1 if getattr(self, attr) else 0) << (code - 1)
         return ret
 
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.code == other.code
-
     def __call__(self, *args):
         return _apply(self, None, None, *args)
 
@@ -129,7 +138,7 @@ del _setup_named_emphasis
 
 
 @export
-class Color(abc.ABC):
+class Color(AbstractColor):
     @abc.abstractmethod
     def __init__(self, *args,
                  bold=False, lowint=False, underline=False,
@@ -158,9 +167,6 @@ class Color(abc.ABC):
     @abc.abstractmethod
     def __int__(self): # pragma: no cover
         raise NotImplementedError
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.code == other.code
 
     def __call__(self, *args):
         return self.fg(*args)
@@ -533,12 +539,14 @@ class ColorHSV(Color):
 
 
 @export
-class ColorCompound:
+class ColorCompound(AbstractColor):
     def __init__(self, *, em=None, fg=None, bg=None):
         if em is None:
             self.em = None
         elif isinstance(em, Emphasis):
             self.em = em
+        elif isinstance(em, self.__class__):
+            self.em = em.em
         else:
             raise TypeError('Invalid em: {}'.format(em))
 
@@ -605,10 +613,6 @@ class ColorCompound:
     def __invert__(self):
         return self.__class__(fg=self.bg, bg=self.fg)
 
-    def __eq__(self, other):
-        if isinstance(other, (self.__class__, Color)):
-            return self.seq == other.seq
-        return self.seq == other
 
 @export
 def paint(em=None, fg=None, bg=None):

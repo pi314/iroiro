@@ -84,6 +84,10 @@ class TestEmphasis(TestCase):
 
 
 class TestColorFacade(TestCase):
+    def test_forbit_instantiate_color_class(self):
+        with self.raises(TypeError):
+            Color()
+
     def test_color_facade(self):
         # no argument unpack
         with self.raises(TypeError):
@@ -673,11 +677,11 @@ class TestPaint(TestCase):
         self.eq(~rybg, paint(fg=blue, bg=red))
         self.eq((~rybg)('text'), '\033[38;5;12;48;5;9mtext\033[m')
 
-    def test_select_ground(self):
-        ry = red / yellow
-        self.eq(paint(fg=ry), red)
+    def test_select_partial_attr(self):
+        ry = (red / yellow) | bold
         self.eq(paint(fg=ry), paint(fg=red))
         self.eq(paint(bg=ry), paint(bg=yellow))
+        self.eq(paint(em=ry), paint(em=bold))
 
     def test_type_check(self):
         with self.raises(TypeError):
