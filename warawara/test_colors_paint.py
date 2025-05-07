@@ -1,5 +1,6 @@
 from .lib_test_utils import *
 
+from warawara import Emphasis
 from warawara import color, paint
 from warawara import black, maroon, green, olive, navy, purple, teal, silver
 from warawara import grey, red, lime, yellow, blue, fuchsia, magenta, cyan, aqua, white
@@ -11,6 +12,14 @@ from warawara import bold, underline
 class TestPaint(TestCase):
     def test_repr(self):
         self.true(repr(paint()).startswith('ColorCompound'))
+
+    def test_empty(self):
+        self.eq(paint(), '')
+        self.eq(paint().seq, '')
+        self.eq(paint(em=None, fg=None, bg=None), '')
+        self.eq(paint(em=Emphasis(), fg=None, bg=None), '')
+        self.eq(paint(em=None, fg=color(), bg=None), '')
+        self.eq(paint(em=None, fg=None, bg=color()), '')
 
     def test_eq(self):
         self.eq(paint(fg=42), color(42))

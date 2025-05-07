@@ -11,6 +11,7 @@ class TestColorHSV(TestCase):
         self.eq(red, other)
 
     def test_empty(self):
+        self.eq(ColorHSV(), '')
         self.eq(ColorHSV().seq, '')
 
     def test_parse_str(self):

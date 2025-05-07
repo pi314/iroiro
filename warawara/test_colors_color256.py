@@ -11,6 +11,7 @@ class TestColor256(TestCase):
         self.eq(red, other)
 
     def test_empty(self):
+        self.eq(Color256(), '')
         self.eq(Color256().seq, '')
 
     def test_index(self):

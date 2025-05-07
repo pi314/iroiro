@@ -10,6 +10,7 @@ class TestColor8(TestCase):
         self.eq(red, other)
 
     def test_empty(self):
+        self.eq(Color8(), '')
         self.eq(Color8().seq, '')
 
     def test_index(self):

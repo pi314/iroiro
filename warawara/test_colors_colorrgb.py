@@ -11,6 +11,7 @@ class TestColorRGB(TestCase):
         self.eq(red, other)
 
     def test_empty(self):
+        self.eq(ColorRGB(), '')
         self.eq(ColorRGB().seq, '')
 
     def test(self):

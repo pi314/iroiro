@@ -54,6 +54,9 @@ class TestColorFacade(TestCase):
         self.true(isinstance(lime, ColorHSV))
         self.true(isinstance(lime, Color))
 
+    def test_empty(self):
+        self.eq(color(), '')
+
     def test_color_invalid_value(self):
         with self.raises(TypeError):
             color(True)
