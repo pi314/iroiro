@@ -261,7 +261,7 @@ class Color8(Color):
         return Color256(self.index)
 
     def to_rgb(self):
-        return Color256(self.index).to_rgb()
+        return self.to_256().to_rgb()
 
     def to_hsv(self):
         return self.to_rgb().to_hsv()

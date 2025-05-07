@@ -29,7 +29,7 @@ color('@41,100,100')    # ColorHSV: orange
 color('\033[38;5;214m') # paint(fg=Color256(214))
 ```
 
-If the argument does not have correct format, `TypeError` is raised.
+If the argument does not in correct data type, `TypeError` is raised.
 
 See [Color256](#class-color256), [ColorRGB](#class-colorrgb),
 and [ColorHSV](#class-colorhsv) for more details.
@@ -37,13 +37,23 @@ and [ColorHSV](#class-colorhsv) for more details.
 
 ## Class `Emphasis`
 
-Represent special attributes (bold, underline, etc)
+Represent special attributes (bold, underline, blink, etc.)
 
 __Parameters__
 ```python
 Emphasis()
+Emphasis(*codes, **attrs)
+# codes: 1 | 2 | 4 | 5 | 7 | 8
+# attrs: bold | lowint | underline | blink | reverse | invisible
+```
+
+__Examples__
+```python
+Emphasis(1)
 Emphasis(1, 2, 4, 5, 7, 8)
+Emphasis(bold=True)
 Emphasis(bold=True, lowint=True, underline=True, blink=True, reverse=True, invisible=True)
+```
 
 
 ## Class `Color`
@@ -53,6 +63,31 @@ An abstract base class that is inherited by other Color types.
 It's intended to be used for type checking. For example, `isinstance(obj, Color)`.
 
 Two `Color` objects are defined equal if their escape sequences are equal.
+
+
+## Class `Color8`
+
+Represents a VT100 8 color.
+
+The actual color displayed in your terminal might look different
+depends on your palette settings.
+
+__Parameters__
+```python
+Color8()
+Color8(index) # index: int, 0 ~ 7
+```
+
+__Examples__
+```python
+# Magenta
+c = Color8(5)
+assert str(c) == '\033[35m'
+assert c.to_256() == Color256(5)
+```
+
+Color8 is kind of a subset of Color256.
+See [Color256](#class-color256) for more examples.
 
 
 ## Class `Color256`
@@ -248,7 +283,7 @@ An alias function that returns `ColorCompound` object.
 
 __Parameters__
 ```python
-paint(fg=None, bg=None)
+paint(em=None, fg=None, bg=None)
 ```
 
 
@@ -260,7 +295,7 @@ Binds two Color object together, one for foreground and one for background.
 
 __Parameters__
 ```python
-ColorCompound(fg=None, bg=None)
+ColorCompound(em=None, fg=None, bg=None)
 ```
 
 __Examples__
@@ -273,7 +308,7 @@ assert (~orange)('ORANGE') == '\033[48;5;208mORANGE\033[m'
 
 # Pair a foreground and a background
 od = orange / darkorange
-assert od('ORANGE') == '\033[38;5;208;48;2;255;175;0mORANGE\033[m\n'
+assert od('ORANGE') == '\033[38;5;208;48;2;255;175;0mORANGE\033[m'
 ```
 
 In addition, `ColorCompound` objects supports ``__or__`` operation.
@@ -285,7 +320,11 @@ ry = red / yellow
 ig = ~green
 ryig = ry | ig
 assert ryig == red / green
-assert ryig('text') == '\033[38;5;9;48;5;12mtext\033[m'
+assert ryig('text') == '\033[38;5;9;48;5;2mtext\033[m'
+
+# Emphasize with bold and underline
+buryig = bold | underline | ryig
+assert buryig('text') == '\033[1;4;38;5;9;48;5;2mtext\033[m'
 ```
 
 
