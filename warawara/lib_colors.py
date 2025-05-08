@@ -45,6 +45,32 @@ class AbstractColor(abc.ABC):
 
 
 @export
+class NoColor(AbstractColor):
+    @property
+    def seq(self):
+        return '\033[m'
+
+    @property
+    def code(self):
+        return ''
+
+    def __repr__(self):
+        return 'NoColor()'
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) or other == '\033[m'
+
+    def __str__(self):
+        return '\033[m'
+
+    def __or__(self, other):
+        return other
+
+    def __call__(self, *args):
+        return _apply(self, None, None, *args)
+
+
+@export
 class Emphasis(AbstractColor):
     ATTR_CODE = {
             'bold': 1,
@@ -105,7 +131,10 @@ class Emphasis(AbstractColor):
         if rhs is None:
             return self
 
-        if isinstance(rhs, self.__class__):
+        if isinstance(rhs, NoColor):
+            return rhs
+
+        elif isinstance(rhs, self.__class__):
             attrs = {attr: (getattr(rhs, attr) or getattr(self, attr))
                      for attr in Emphasis.ATTR_CODE}
             return Emphasis(**attrs)
@@ -189,7 +218,9 @@ class Color(AbstractColor):
         return ColorCompound(fg=self, bg=other)
 
     def __or__(self, other):
-        if isinstance(other, Color):
+        if isinstance(other, NoColor):
+            return other
+        elif isinstance(other, Color):
             return other if other.code else self
         return ColorCompound(fg=self) | other
 
@@ -581,7 +612,9 @@ class ColorCompound(AbstractColor):
         return self.seq or '\033[m'
 
     def __or__(self, other):
-        if isinstance(other, self.__class__):
+        if isinstance(other, NoColor):
+            return other
+        elif isinstance(other, self.__class__):
             em = other.em
             fg = other.fg
             bg = other.bg
@@ -620,7 +653,7 @@ def paint(em=None, fg=None, bg=None):
 
 
 export('nocolor')
-nocolor = color()
+nocolor = NoColor()
 
 named_colors = [
         (0, ('black',)),

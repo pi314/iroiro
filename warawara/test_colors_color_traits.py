@@ -64,7 +64,7 @@ class TestColorTraits(TestCase):
         colors_under_test = (orange, coffee, purple)
         for A in colors_under_test:
             self.eq(nocolor | A, A)
-            self.eq(A | nocolor, A)
+            self.eq(A | nocolor, nocolor)
 
         for A in colors_under_test:
             for B in colors_under_test:
