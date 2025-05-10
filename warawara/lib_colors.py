@@ -14,7 +14,7 @@ from .internal_utils import exporter
 export, __all__ = exporter()
 
 
-def _apply(em, fg, bg, *args):
+def _apply(em, fg, bg, *args, reset=False):
     s = ' '.join(str(arg) for arg in args)
 
     code = ';'.join(filter(None, (
@@ -23,7 +23,10 @@ def _apply(em, fg, bg, *args):
         ('4' + bg.code) if bg is not None and bg.code else None,
         )))
 
-    start = ('\033[' + code + 'm') if code else ''
+    if reset and code:
+        code = '0;' + code
+
+    start = ('\033[' + code + 'm') if code or reset else ''
     end = '\033[m' if start else ''
 
     if not args:
@@ -571,7 +574,9 @@ class ColorHSV(Color):
 
 @export
 class ColorCompound(AbstractColor):
-    def __init__(self, *, em=None, fg=None, bg=None):
+    def __init__(self, *, reset=False, em=None, fg=None, bg=None):
+        self.reset = reset
+
         if em is None:
             self.em = None
         elif isinstance(em, Emphasis):
@@ -597,16 +602,17 @@ class ColorCompound(AbstractColor):
 
     @property
     def seq(self):
-        return _apply(self.em, self.fg, self.bg)
+        return _apply(self.em, self.fg, self.bg, reset=self.reset)
 
     def __repr__(self):
-        return '{clsname}(em={em} fg={fg}, bg={bg})'.format(
+        return '{clsname}(reset={reset}, em={em}, fg={fg}, bg={bg})'.format(
                 clsname=self.__class__.__name__,
+                reset=self.reset,
                 em=repr(self.em),
                 fg=repr(self.fg), bg=repr(self.bg))
 
     def __call__(self, *args):
-        return _apply(self.em, self.fg, self.bg, *args)
+        return _apply(self.em, self.fg, self.bg, *args, reset=self.reset)
 
     def __str__(self):
         return self.seq or '\033[m'
@@ -648,8 +654,8 @@ class ColorCompound(AbstractColor):
 
 
 @export
-def paint(em=None, fg=None, bg=None):
-    return ColorCompound(em=em, fg=fg, bg=bg)
+def paint(reset=False, em=None, fg=None, bg=None):
+    return ColorCompound(reset=reset, em=em, fg=fg, bg=bg)
 
 
 export('nocolor')
@@ -782,6 +788,7 @@ def decolor(s):
 
 
 def _tokenize(seq):
+    tokens = []
     matching = 0
     buf = ''
     for char in seq:
@@ -806,9 +813,9 @@ def _tokenize(seq):
                 for token in buf.split(';'):
                     if token:
                         empty = False
-                        yield int(token, 10)
+                        tokens.append(int(token, 10))
                 if empty:
-                    yield 0
+                    tokens.append(0)
                 buf = ''
                 matching = 0
                 continue
@@ -819,16 +826,21 @@ def _tokenize(seq):
         else:
             matching = 0
 
+    return tokens or None
+
 
 def _parse(seq):
     attr = {}
 
-    tokens = list(_tokenize(seq))
+    tokens = _tokenize(seq)
+    if tokens is None:
+        return ColorCompound()
+
     codes = []
     while tokens:
         if tokens[0] == 0:
             tokens.pop(0)
-            attr = {}
+            attr = {'reset': True}
             continue
 
         if tokens[0] in (1, 2, 4, 5, 7, 8):
