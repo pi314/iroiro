@@ -4,6 +4,7 @@ from .lib_test_utils import *
 
 import warawara as wara
 
+
 class TestRunInThread(TestCase):
     def test_run_in_thread(self):
         barrier = threading.Barrier(2)
@@ -411,5 +412,26 @@ class TestFakeTerminal(TestCase):
         self.false(ft.recording)
 
         # ft.recording = True
-        ft.puts('\033[38;5;208mwah\033[mwow')
-        self.eq(ft.canvas[0][0].attr, '38;5;208')
+        ft.puts('\033[38;5;208mwah')
+        self.eq(ft.canvas[0][0].attr, '\033[38;5;208m')
+        self.eq(ft.canvas[0][1].attr, '\033[38;5;208m')
+        self.eq(ft.canvas[0][2].attr, '\033[38;5;208m')
+        self.eq(ft.canvas[0][0].char, 'w')
+        self.eq(ft.canvas[0][1].char, 'a')
+        self.eq(ft.canvas[0][2].char, 'h')
+
+        ft.puts('\033[47;1mwow')
+        self.eq(ft.canvas[0][3].attr, '\033[1;38;5;208;47m')
+        self.eq(ft.canvas[0][4].attr, '\033[1;38;5;208;47m')
+        self.eq(ft.canvas[0][5].attr, '\033[1;38;5;208;47m')
+        self.eq(ft.canvas[0][3].char, 'w')
+        self.eq(ft.canvas[0][4].char, 'o')
+        self.eq(ft.canvas[0][5].char, 'w')
+
+        ft.puts('\033[mlol')
+        self.eq(ft.canvas[0][6].attr, '\033[m')
+        self.eq(ft.canvas[0][7].attr, '\033[m')
+        self.eq(ft.canvas[0][8].attr, '\033[m')
+        self.eq(ft.canvas[0][6].char, 'l')
+        self.eq(ft.canvas[0][7].char, 'o')
+        self.eq(ft.canvas[0][8].char, 'l')

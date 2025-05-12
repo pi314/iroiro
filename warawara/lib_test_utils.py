@@ -7,6 +7,7 @@ export, __all__ = exporter()
 
 
 from .lib_regex import rere
+from .lib_colors import color
 
 
 @export
@@ -161,7 +162,7 @@ class RunMocker:
 
 
 class FakeTerminalCell:
-    def __init__(self, char, attr=None):
+    def __init__(self, char, attr):
         self.char = char
         self.attr = attr
 
@@ -178,7 +179,7 @@ class FakeTerminalCursor:
     def reset(self):
         self.y = 0
         self.x = 0
-        self.attr = None
+        self.attr = color()
 
     def __eq__(self, other):
         return (self.y, self.x) == other
@@ -337,13 +338,10 @@ class FakeTerminal:
         elif self.chewing == '\033[K':
             self.canvas[self.cursor.y] = self.canvas[self.cursor.y][:self.cursor.x]
             if self.cursor.x > 0 and self.canvas[self.cursor.y][-1].width == 2:
-                self.canvas[self.cursor.y][-1] = FakeTerminalCell(' ')
+                self.canvas[self.cursor.y][-1] = FakeTerminalCell(' ', attr=color())
 
         elif m.fullmatch('\033' + r'\[([\d;]*)m'):
-            if m.text == '\033[m':
-                self.cursor.attr = None
-            else:
-                self.cursor.attr = m.group(1)
+            self.cursor.attr = color(self.cursor.attr.seq + self.chewing)
 
         else:
             import string

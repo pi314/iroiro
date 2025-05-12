@@ -607,7 +607,7 @@ class ColorCompound(AbstractColor):
     def __repr__(self):
         return '{clsname}(reset={reset}, em={em}, fg={fg}, bg={bg})'.format(
                 clsname=self.__class__.__name__,
-                reset=self.reset,
+                reset=repr(self.reset),
                 em=repr(self.em),
                 fg=repr(self.fg), bg=repr(self.bg))
 
@@ -657,7 +657,7 @@ class ColorCompound(AbstractColor):
 
 
 @export
-def paint(reset=False, em=None, fg=None, bg=None):
+def paint(*, reset=False, em=None, fg=None, bg=None):
     return ColorCompound(reset=reset, em=em, fg=fg, bg=bg)
 
 
