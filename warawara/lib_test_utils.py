@@ -346,9 +346,10 @@ class FakeTerminal:
                 self.cursor.attr = m.group(1)
 
         else:
+            import string
             if (self.chewing and
                 self.chewing.startswith('\033') and
-                self.chewing[-1].upper() in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
+                self.chewing[-1] in string.ascii_letters):
                 # Escape sequence is terminated but it's unknown, drop it
                 self.chewing = ''
             return False
