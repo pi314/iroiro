@@ -57,6 +57,8 @@ class TestPaint(TestCase):
         self.eq(ry | bold, '\033[1;38;5;9;48;5;11m')
         self.eq(ry | bold | underline, '\033[1;4;38;5;9;48;5;11m')
 
+        self.eq(ry | paint(reset=True, bg=lime), '\033[48;5;10m')
+
     def test_invert(self):
         ry = red / yellow
         bg = blue / green

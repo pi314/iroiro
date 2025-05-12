@@ -621,14 +621,17 @@ class ColorCompound(AbstractColor):
         if isinstance(other, NoColor):
             return other
         elif isinstance(other, self.__class__):
+            reset = other.reset
             em = other.em
             fg = other.fg
             bg = other.bg
         elif isinstance(other, Color):
+            reset = False
             em = None
             fg = other
             bg = None
         elif isinstance(other, Emphasis):
+            reset = False
             em = other
             fg = None
             bg = None
@@ -636,13 +639,13 @@ class ColorCompound(AbstractColor):
             raise TypeError('unsupported operand types for |: {} and {}'.format(
                 type(self).__name__, type(other).__name__))
 
-        if em is None:
-            em = self.em
-        elif isinstance(self.em, Emphasis):
-            em = em | self.em
-
-        fg = fg or self.fg
-        bg = bg or self.bg
+        if not reset:
+            if em is None:
+                em = self.em
+            elif isinstance(self.em, Emphasis):
+                em = em | self.em
+            fg = fg or self.fg
+            bg = bg or self.bg
 
         return self.__class__(em=em, fg=fg, bg=bg)
 
