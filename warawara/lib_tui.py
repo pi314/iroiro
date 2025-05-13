@@ -629,7 +629,7 @@ class PseudoCanvas:
                     self.print('\r\033[{}{}'.format(dist, 'A' if self.cursor > idx else 'B'), end='')
 
             # Print content onto screen
-            self.print('\r\033[K{}'.format(wrap(line, term_width)[0]),
+            self.print('\r{}\033[K'.format(wrap(line, term_width)[0]),
                   end='' if is_last else '\n')
 
             # Estimate cursor position

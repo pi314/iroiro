@@ -288,7 +288,7 @@ class FakeTerminal:
         if cell.width == 2:
             # For wide-char, check if it overrides the next char
             next_char = self.canvas[self.cursor.y][self.cursor.x + 1]
-            if next_char.width == 2:
+            if next_char is not None and next_char.width == 2:
                 self.canvas[self.cursor.y][self.cursor.x + 2] = FakeTerminalCell(' ', attr=self.cursor.attr)
 
             self.canvas[self.cursor.y][self.cursor.x + 1] = None
@@ -337,7 +337,11 @@ class FakeTerminal:
 
         elif self.chewing == '\033[K':
             self.canvas[self.cursor.y] = self.canvas[self.cursor.y][:self.cursor.x]
-            if self.cursor.x > 0 and self.canvas[self.cursor.y][-1].width == 2:
+            # Check is last character is cut into half
+            if (self.cursor.x > 0 and
+                self.canvas[self.cursor.y][-1] is not None and
+                self.canvas[self.cursor.y][-1].width == 2):
+                # if yes, replace it with a space
                 self.canvas[self.cursor.y][-1] = FakeTerminalCell(' ', attr=color())
 
         elif m.fullmatch('\033' + r'\[([\d;]*)m'):

@@ -905,9 +905,9 @@ class TestPseudoCanvas(TestCase):
         # The last line is always updated in order to restore cursor position
         self.eq(self.terminal.recording, [
             '\r\033[9A',
-            '\r\033[K哇 40 (new)\n',
+            '\r哇 40 (new)\033[K\n',
             '\r\033[8B',
-            '\r\033[K哇 49'])
+            '\r哇 49\033[K'])
         self.terminal.recording = False
 
         # Try a hard re-render
@@ -915,5 +915,5 @@ class TestPseudoCanvas(TestCase):
         pc[40] = '哇 40'
         pc.render(all=True)
         self.eq(self.terminal.recording, ['\r\033[23A'] +
-                ['\r\033[K哇 {}\n'.format(i) for i in range(26, 49)] +
-                ['\r\033[K哇 49'])
+                ['\r哇 {}\033[K\n'.format(i) for i in range(26, 49)] +
+                ['\r哇 49\033[K'])
