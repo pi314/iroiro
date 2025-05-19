@@ -834,6 +834,27 @@ class TestPseudoCanvas(TestCase):
         pc[1] = 'wahwah'
         self.eq(pc[1], 'wahwah')
 
+    def test_auto_append(self):
+        pc = PseudoCanvas()
+        self.true(pc.empty)
+        with self.raises(IndexError):
+            pc[2] = 'line3'
+
+        pc = PseudoCanvas(auto_append=True)
+        self.true(pc.empty)
+        pc[1] = 'line2'
+        self.eq(len(pc), 2)
+
+        pc[4] = 'line5'
+
+        self.eq(pc.lines, [
+            '',
+            'line2',
+            '',
+            '',
+            'line5',
+            ])
+
     def test_render_basic(self):
         pc = PseudoCanvas()
         pc.print = self.terminal.print
