@@ -642,3 +642,39 @@ class PseudoCanvas:
 
             self.avail_space = min(term_height, max(self.avail_space, idx + 1))
             self.dirty[idx] = False
+
+
+@export
+class Menu:
+    def __init__(self, title, options, *,
+                 format=None, arrow='>', type=None, onkey=None, wrap=False):
+        self.canvas = PseudoCanvas(auto_append=True)
+        self.title = title
+        self.options = options
+        self.message = ''
+
+        self.idx = 0
+
+    def render(self):
+        self.canvas[0] = self.title
+
+        for idx, opt in enumerate(self.options):
+            self.canvas[idx + 1] = (' ' if idx != self.idx else '>') + opt
+
+        self.canvas[idx + 2] = self.message
+
+        self.canvas.render()
+
+    def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
+        # with HijackStdio():
+            # with ExceptionSuppressor(suppress):
+        while True:
+            self.render()
+            ch = getch()
+
+            if ch == 'up':
+                self.idx = (self.idx + len(self.options) - 1) % len(self.options)
+            elif ch == 'down':
+                self.idx = (self.idx + 1) % len(self.options)
+            elif ch == 'q':
+                break
