@@ -828,7 +828,7 @@ class TestGetch(TestCase):
         getch()
 
         self.press('\x03')
-        getch(capture=None)
+        getch(capture='unknown key')
         self.eq(self.killed, signal.SIGINT)
 
 
