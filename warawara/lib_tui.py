@@ -695,12 +695,17 @@ class Menu:
         self.idx = 0
 
     def render(self):
-        self.canvas[0] = self.title
+        self.canvas.clear()
+
+        title = (self.title is not None)
+
+        if title:
+            self.canvas[0] = self.title
 
         for idx, opt in enumerate(self.options):
-            self.canvas[idx + 1] = (' ' if idx != self.idx else '>') + opt
+            self.canvas[title + idx] = ('  ' if idx != self.idx else '> ') + opt
 
-        self.canvas[idx + 2] = self.message
+        self.canvas[title + len(self.options)] = str(self.message)
 
         self.canvas.render()
 
@@ -709,11 +714,22 @@ class Menu:
             # with ExceptionSuppressor(suppress):
         while True:
             self.render()
-            ch = getch()
+            ch = getch(capture='fs')
 
             if ch == 'up':
                 self.idx = (self.idx + len(self.options) - 1) % len(self.options)
             elif ch == 'down':
                 self.idx = (self.idx + 1) % len(self.options)
-            elif ch == 'q':
+            elif ch in ('q', 'ctrl+c', KEY_FS):
+                self.message = repr(ch)
+                self.render()
                 break
+            elif ch == 't':
+                if self.title:
+                    self.title = None
+                else:
+                    self.title = 'new title'
+            else:
+                self.message = repr(ch)
+
+        print()
