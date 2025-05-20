@@ -674,6 +674,8 @@ class TestGetch(TestCase):
         self.patch('sys.stdin.fileno', self.mock_stdin_fileno)
         self.patch('select.select', self.mock_select)
         self.patch('os.read', self.mock_read)
+        self.patch('os.getpid', self.mock_getpid)
+        self.patch('os.kill', self.mock_kill)
         self.patch('tty.setraw', self.mock_setraw)
         self.patch('termios.tcgetattr', self.mock_tcgetattr)
         self.patch('termios.tcsetattr', self.mock_tcsetattr)
@@ -681,9 +683,15 @@ class TestGetch(TestCase):
         self.default_term_attr = [
                 'iflag', 'oflag', 'cflag', 'lflag',
                 'ispeed', 'ospeed',
-                'cc']
+                [b'cc'] * 20]
+
+        import termios
+        self.default_term_attr[6][termios.VINTR] = b'\x03'
+        self.default_term_attr[6][termios.VSUSP] = b'\x1c'
+        self.default_term_attr[6][termios.VQUIT] = b'\x1a'
 
         self.term_attr = list(self.default_term_attr)
+        self.killed = None
 
     def tearDown(self):
         self.eq(self.term_attr, self.default_term_attr)
@@ -707,6 +715,13 @@ class TestGetch(TestCase):
         ret = self.buffer[:n]
         del self.buffer[:n]
         return ret
+
+    def mock_getpid(self):
+        return self
+
+    def mock_kill(self, pid, sig):
+        assert pid is self
+        self.killed = sig
 
     def mock_setraw(self, fd, when=None):
         import termios
@@ -805,6 +820,16 @@ class TestGetch(TestCase):
         self.eq(MY_HOME, KEY_HOME)
         self.press(KEY_HOME.seq)
         self.eq(getch(), MY_HOME)
+
+    def test_capture(self):
+        import signal
+
+        self.press('\x03')
+        getch()
+
+        self.press('\x03')
+        getch(capture=None)
+        self.eq(self.killed, signal.SIGINT)
 
 
 class TestPseudoCanvas(TestCase):

@@ -407,6 +407,8 @@ KEY_TAB = Key(b'\t', 'tab', 'ctrl-i', 'ctrl+i', '^I')
 KEY_ENTER = Key(b'\r', 'enter', 'ctrl-m', 'ctrl+m', '^M')
 KEY_SPACE = Key(b' ', 'space')
 
+KEY_FS = Key(b'\x1c', 'fs', 'ctrl-\\', 'ctrl+\\', '^\\')
+
 KEY_UP = Key(b'\033[A', 'up')
 KEY_DOWN = Key(b'\033[B', 'down')
 KEY_RIGHT = Key(b'\033[C', 'right')
@@ -500,14 +502,31 @@ def deregister_key(seq):
 
 
 @export
-def getch(timeout=None, encoding='utf8'):
+def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
     import termios, tty
     import os
     import select
+    import signal
 
     fd = sys.stdin.fileno()
     orig_term_attr = termios.tcgetattr(fd)
     when = termios.TCSADRAIN
+
+    term_attr_cc = termios.tcgetattr(fd)[6]
+
+    capture_table = [
+            [KEY_CTRL_C, term_attr_cc[termios.VINTR], signal.SIGINT],
+            [KEY_CTRL_Z, term_attr_cc[termios.VSUSP], signal.SIGTSTP],
+            [KEY_FS,     term_attr_cc[termios.VQUIT], signal.SIGQUIT],
+            ]
+
+    if isinstance(capture, str):
+        capture = [capture]
+
+    for cap in capture or []:
+        for entry in capture_table:
+            if entry[0] == cap:
+                entry[2] = None
 
     def has_data(t=0):
         return select.select([fd], [], [], t)[0]
@@ -526,6 +545,15 @@ def getch(timeout=None, encoding='utf8'):
         candidate_matches = set(key_table.keys())
         while True:
             acc += read_one_byte()
+
+            # Check special sequences that correspond to signals
+            for entry in capture_table:
+                key, seq, sig = entry
+                if acc[-len(seq):] == seq:
+                    if sig is not None:
+                        os.kill(os.getpid(), sig)
+                    else:
+                        break
 
             if not has_data():
                 break
