@@ -567,20 +567,23 @@ def getch(timeout=None, encoding='utf8'):
 class PseudoCanvas:
     def __init__(self):
         self.lines = []
-        self.dirty = []
-        self.avail_space = 0
-        self.cursor = 0
 
         import builtins
         self.print = builtins.print
+        self.visible_lines = []
 
     def append(self, line=''):
         self.lines.append(line)
-        self.dirty.append(True)
 
     def extend(self, lines=[]):
         for line in lines:
             self.append(line)
+
+    def insert(self, index, line):
+        return self.lines.insert(index, line)
+
+    def pop(self, index=-1):
+        return self.lines.pop(index)
 
     @property
     def empty(self):
@@ -600,46 +603,47 @@ class PseudoCanvas:
             self.append()
 
         self.lines[idx] = line
-        self.dirty[idx] = True
 
     def render(self, *, all=None):
-        if self.empty:
-            return
-
-        if all:
-            self.dirty = [True for d in self.dirty]
-
         import shutil
         term_size = shutil.get_terminal_size()
         term_width = term_size.columns
         term_height = term_size.lines
 
+        # Skip out-of-screen lines
+        self.visible_lines = self.visible_lines[-term_height:] or [None]
+
+        cursor = max(len(self.visible_lines) - 1, 0)
+
+        for i in range(cursor, len(self.lines) - 1, -1):
+            self.print('\r\033[K\033[A', end='')
+            self.visible_lines.pop()
+            cursor -= 1
+
         # Assumed that cursor is always at the end of last line
         from .lib_itertools import lookahead
-        for (idx, line), is_last in lookahead(enumerate(self.lines)):
-            # Skip non-dirty lines, but always redraw the last line
-            if not self.dirty[idx] and not is_last:
-                continue
+        for (idx, line), is_last in lookahead(enumerate(self.lines[-term_height:])):
+            for i in range(len(self.visible_lines), idx + 1):
+                self.visible_lines.append(None)
 
-            # Skip out-of-screen lines
-            if len(self) > term_height and idx < len(self) - term_height:
+            # Skip non-dirty lines, but always redraw the last line
+            if not all and not is_last and self.visible_lines[idx] == line:
                 continue
 
             # Align cursor position
-            if self.cursor != idx:
-                dist = min(abs(self.cursor - idx), self.avail_space - 1)
-                if dist > 0:
-                    self.print('\r\033[{}{}'.format(dist, 'A' if self.cursor > idx else 'B'), end='')
+            if cursor != idx:
+                dist = min(abs(cursor - idx), len(self.visible_lines) - 1)
+                self.print('\r\033[{}{}'.format(dist, 'A' if cursor > idx else 'B'), end='')
+
+            wline = wrap(line, term_width)[0]
+            self.visible_lines[idx] = wline
 
             # Print content onto screen
-            self.print('\r{}\033[K'.format(wrap(line, term_width)[0]),
+            self.print('\r{}\033[K'.format(wline),
                   end='' if is_last else '\n')
 
             # Estimate cursor position
-            self.cursor = idx + (not is_last)
-
-            self.avail_space = min(term_height, max(self.avail_space, idx + 1))
-            self.dirty[idx] = False
+            cursor = idx + (not is_last)
 
 
 @export

@@ -890,8 +890,6 @@ class TestPseudoCanvas(TestCase):
 
     def test_render_vertical_overflow(self):
         pc = PseudoCanvas()
-        data = []
-        pc.print = lambda *args, **kwargs: data.append((args, kwargs))
         pc.print = self.terminal.print
         self.eq(self.terminal.width, 80)
         self.eq(self.terminal.height, 24)
@@ -935,3 +933,102 @@ class TestPseudoCanvas(TestCase):
         self.eq(self.terminal.recording, ['\r\033[23A'] +
                 ['\r哇 {}\033[K\n'.format(i) for i in range(26, 49)] +
                 ['\r哇 49\033[K'])
+
+        self.terminal.recording = False
+        self.terminal.recording = True
+        pc.pop()
+        pc.render(all=True)
+        self.eq(self.terminal.recording, ['\r\033[23A'] +
+                ['\r哇 {}\033[K\n'.format(i) for i in range(25, 48)] +
+                ['\r哇 48\033[K'])
+
+    def test_pop_insert(self):
+        self.terminal = FakeTerminal(lines=4)
+        pc = PseudoCanvas()
+        pc.print = self.terminal.print
+        self.eq(self.terminal.width, 80)
+        self.eq(self.terminal.height, 4)
+
+        # Normal print
+        self.terminal.recording = True
+        pc[0] = 'line0'
+        pc[1] = 'line3'
+        self.eq(pc.lines, ['line0', 'line3'])
+        pc.render()
+        self.eq(pc.visible_lines, ['line0', 'line3'])
+        self.eq(self.terminal.recording, [
+            '\rline0\033[K\n',
+            '\rline3\033[K',
+            ])
+        self.terminal.recording = False
+
+        # Insert two lines
+        self.terminal.recording = True
+        pc[0] = 'line0'
+        pc.insert(1, 'line2')
+        pc.insert(1, 'line1')
+        self.eq(pc.lines, ['line0', 'line1', 'line2', 'line3'])
+        pc.render()
+        self.eq(pc.visible_lines, ['line0', 'line1', 'line2', 'line3'])
+        self.eq(self.terminal.recording, [
+            '\rline1\033[K\n',
+            '\rline2\033[K\n',
+            '\rline3\033[K',
+            ])
+        self.terminal.recording = False
+
+        # Insert more lines, some lines are becoming invisible
+        self.terminal.recording = True
+        pc.insert(1, 'abc')
+        pc.insert(2, 'def')
+        pc.insert(0, 'not visible')
+        self.eq(pc.lines, ['not visible', 'line0', 'abc', 'def', 'line1', 'line2', 'line3'])
+        pc.render()
+        self.eq(pc.visible_lines, ['def', 'line1', 'line2', 'line3'])
+        self.eq(self.terminal.recording, [
+            '\r\033[3A',
+            '\rdef\033[K\n',
+            '\r\033[2B',
+            '\rline3\033[K',
+            ])
+        self.terminal.recording = False
+
+        # Pop invisible lines
+        self.terminal.recording = True
+        pc.pop(0)
+        pc.pop(0)
+        self.eq(pc.lines, ['abc', 'def', 'line1', 'line2', 'line3'])
+        pc.render()
+        self.eq(pc.visible_lines, ['def', 'line1', 'line2', 'line3'])
+        self.eq(self.terminal.recording, [
+            '\rline3\033[K',
+            ])
+        self.terminal.recording = False
+
+        # Pop last line, cause large redraw
+        self.terminal.recording = True
+        pc.pop()
+        self.eq(pc.lines, ['abc', 'def', 'line1', 'line2'])
+        pc.render()
+        self.eq(pc.visible_lines, ['abc', 'def', 'line1', 'line2'])
+        self.eq(self.terminal.recording, [
+            '\r\033[3A',
+            '\rabc\033[K\n',
+            '\rdef\033[K\n',
+            '\rline1\033[K\n',
+            '\rline2\033[K',
+            ])
+        self.terminal.recording = False
+
+        # Pop last lines, cause canvas to shrink
+        self.terminal.recording = True
+        pc.pop()
+        pc.pop()
+        self.eq(pc.lines, ['abc', 'def'])
+        pc.render()
+        self.eq(self.terminal.recording, [
+            '\r\033[K\033[A',
+            '\r\033[K\033[A',
+            '\rdef\033[K',
+            ])
+        self.terminal.recording = False
