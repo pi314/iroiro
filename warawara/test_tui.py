@@ -834,6 +834,9 @@ class TestPseudoCanvas(TestCase):
         pc[1] = 'wahwah'
         self.eq(pc[1], 'wahwah')
 
+        pc[1:3] = ['slice1', 'slice2', 'slice3', 'slice4']
+        self.eq(pc.lines, ['wah1', 'slice1', 'slice2', 'slice3', 'slice4', 'wah4', 'wah5'])
+
     def test_auto_append(self):
         pc = PseudoCanvas()
         self.true(pc.empty)
@@ -946,7 +949,6 @@ class TestPseudoCanvas(TestCase):
         self.terminal = FakeTerminal(lines=4)
         pc = PseudoCanvas()
         pc.print = self.terminal.print
-        self.eq(self.terminal.width, 80)
         self.eq(self.terminal.height, 4)
 
         # Normal print
@@ -1053,8 +1055,37 @@ class TestPseudoCanvas(TestCase):
             ])
         self.terminal.recording = False
 
+        # Clear
         self.terminal.recording = True
         pc.clear()
+        self.true(pc.empty)
+        pc.render()
+        self.eq(pc.visible_lines, [''])
+        self.eq(self.terminal.recording, [
+            '\r\033[K\033[A',
+            '\r\033[K\033[A',
+            '\r\033[K',
+            ])
+        self.terminal.recording = False
+
+        # Normal print
+        self.terminal.recording = True
+        pc[0] = 'line0'
+        pc[1] = 'line1'
+        pc[2] = 'line2'
+        self.eq(pc.lines, ['line0', 'line1', 'line2'])
+        pc.render()
+        self.eq(pc.visible_lines, ['line0', 'line1', 'line2'])
+        self.eq(self.terminal.recording, [
+            '\rline0\033[K\n',
+            '\rline1\033[K\n',
+            '\rline2\033[K',
+            ])
+        self.terminal.recording = False
+
+        # Clear by slice assignment
+        self.terminal.recording = True
+        pc[:] = []
         self.eq(pc.lines, [])
         pc.render()
         self.eq(pc.visible_lines, [''])

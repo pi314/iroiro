@@ -602,7 +602,12 @@ class PseudoCanvas:
         return self.lines[idx]
 
     def __setitem__(self, idx, line):
-        for i in range(len(self), idx + 1):
+        if isinstance(idx, slice):
+            start = idx.start or 0
+        else:
+            start = idx
+
+        for i in range(len(self), start + 1):
             self.append()
 
         self.lines[idx] = line
