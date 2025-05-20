@@ -565,8 +565,7 @@ def getch(timeout=None, encoding='utf8'):
 
 @export
 class PseudoCanvas:
-    def __init__(self, *, auto_append=False):
-        self.auto_append = auto_append
+    def __init__(self):
         self.lines = []
         self.dirty = []
         self.avail_space = 0
@@ -597,9 +596,8 @@ class PseudoCanvas:
         return self.lines[idx]
 
     def __setitem__(self, idx, line):
-        if self.auto_append:
-            for i in range(len(self), idx + 1):
-                self.append()
+        for i in range(len(self), idx + 1):
+            self.append()
 
         self.lines[idx] = line
         self.dirty[idx] = True
@@ -648,7 +646,7 @@ class PseudoCanvas:
 class Menu:
     def __init__(self, title, options, *,
                  format=None, arrow='>', type=None, onkey=None, wrap=False):
-        self.canvas = PseudoCanvas(auto_append=True)
+        self.canvas = PseudoCanvas()
         self.title = title
         self.options = options
         self.message = ''

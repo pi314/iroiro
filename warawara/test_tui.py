@@ -837,20 +837,17 @@ class TestPseudoCanvas(TestCase):
     def test_auto_append(self):
         pc = PseudoCanvas()
         self.true(pc.empty)
-        with self.raises(IndexError):
-            pc[2] = 'line3'
 
-        pc = PseudoCanvas(auto_append=True)
-        self.true(pc.empty)
+        pc[2] = 'line3'
         pc[1] = 'line2'
-        self.eq(len(pc), 2)
+        self.eq(len(pc), 3)
 
         pc[4] = 'line5'
 
         self.eq(pc.lines, [
             '',
             'line2',
-            '',
+            'line3',
             '',
             'line5',
             ])
