@@ -585,6 +585,9 @@ class PseudoCanvas:
     def pop(self, index=-1):
         return self.lines.pop(index)
 
+    def clear(self):
+        self.lines.clear()
+
     @property
     def empty(self):
         return not self.lines
@@ -612,17 +615,18 @@ class PseudoCanvas:
 
         # Skip out-of-screen lines
         self.visible_lines = self.visible_lines[-term_height:] or [None]
+        lines = self.lines[-term_height:] or ['']
 
-        cursor = max(len(self.visible_lines) - 1, 0)
+        cursor = len(self.visible_lines) - 1
 
-        for i in range(cursor, len(self.lines) - 1, -1):
+        for i in range(cursor, max(len(lines) - 1, 0), -1):
             self.print('\r\033[K\033[A', end='')
             self.visible_lines.pop()
             cursor -= 1
 
         # Assumed that cursor is always at the end of last line
         from .lib_itertools import lookahead
-        for (idx, line), is_last in lookahead(enumerate(self.lines[-term_height:])):
+        for (idx, line), is_last in lookahead(enumerate(lines)):
             for i in range(len(self.visible_lines), idx + 1):
                 self.visible_lines.append(None)
 

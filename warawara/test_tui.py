@@ -1032,3 +1032,35 @@ class TestPseudoCanvas(TestCase):
             '\rdef\033[K',
             ])
         self.terminal.recording = False
+
+    def test_clear(self):
+        self.terminal = FakeTerminal(lines=4)
+        pc = PseudoCanvas()
+        pc.print = self.terminal.print
+
+        # Normal print
+        self.terminal.recording = True
+        pc[0] = 'line0'
+        pc[1] = 'line1'
+        pc[2] = 'line2'
+        self.eq(pc.lines, ['line0', 'line1', 'line2'])
+        pc.render()
+        self.eq(pc.visible_lines, ['line0', 'line1', 'line2'])
+        self.eq(self.terminal.recording, [
+            '\rline0\033[K\n',
+            '\rline1\033[K\n',
+            '\rline2\033[K',
+            ])
+        self.terminal.recording = False
+
+        self.terminal.recording = True
+        pc.clear()
+        self.eq(pc.lines, [])
+        pc.render()
+        self.eq(pc.visible_lines, [''])
+        self.eq(self.terminal.recording, [
+            '\r\033[K\033[A',
+            '\r\033[K\033[A',
+            '\r\033[K',
+            ])
+        self.terminal.recording = False
