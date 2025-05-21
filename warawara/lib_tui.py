@@ -593,12 +593,16 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
 
 @export
 class Pager:
-    def __init__(self):
+    def __init__(self, lines=None, columns=None):
+        self.height = lines
+        self.width = columns
+        self.top = []
         self.lines = []
+        self.bottom = []
 
         import builtins
         self.print = builtins.print
-        self.visible_lines = []
+        self.display = []
 
     def append(self, line=''):
         self.lines.append(line)
@@ -614,7 +618,17 @@ class Pager:
         return self.lines.pop(index)
 
     def clear(self):
+        if isinstance(self.top, list):
+            self.top.clear()
+        else:
+            self.top = []
+
         self.lines.clear()
+
+        if isinstance(self.bottom, list):
+            self.bottom.clear()
+        else:
+            self.bottom = []
 
     @property
     def empty(self):
@@ -641,39 +655,73 @@ class Pager:
         self.lines[idx] = line
 
     def render(self, *, all=None):
-        import shutil
-        term_size = shutil.get_terminal_size()
-        term_width = term_size.columns
-        term_height = term_size.lines
+        # Get effective canvas size
+        if not self.width or not self.height:
+            import shutil
+            term_size = shutil.get_terminal_size()
+            canvas_width = self.width or term_size.columns
+            canvas_height = self.height or term_size.lines
+        else:
+            canvas_width = self.width
+            canvas_height = self.height
 
-        # Skip out-of-screen lines
-        self.visible_lines = self.visible_lines[-term_height:] or [None]
-        lines = self.lines[-term_height:] or ['']
+        canvas_width = min(canvas_width, term_size.columns)
+        canvas_height = min(canvas_height, term_size.lines)
 
-        cursor = len(self.visible_lines) - 1
+        # Set sticky top lines
+        if isinstance(self.top, list):
+            top_lines = self.top
+        elif self.top is None:
+            top_lines = []
+        else:
+            top_lines = [str(self.top)]
+
+        # Set sticky bottom lines
+        if isinstance(self.bottom, list):
+            bottom_lines = self.bottom
+        elif self.bottom is None:
+            bottom_lines = []
+        else:
+            bottom_lines = [str(self.bottom)]
+
+        # Set sticky content lines
+        content_height = canvas_height - len(top_lines) - len(bottom_lines)
+        if content_height:
+            content_lines = self.lines[-content_height:]
+        else:
+            content_lines = []
+
+        # Skip out-of-screen lines, i.e. canvas size-- if terminal size--
+        self.display = self.display[-canvas_height:] or [None]
+
+        lines = ((top_lines + content_lines + bottom_lines))[-canvas_height:] or ['']
+
+        cursor = len(self.display) - 1
 
         for i in range(cursor, max(len(lines) - 1, 0), -1):
             self.print('\r\033[K\033[A', end='')
-            self.visible_lines.pop()
+            self.display.pop()
             cursor -= 1
 
         # Assumed that cursor is always at the end of last line
         from .lib_itertools import lookahead
         for (idx, line), is_last in lookahead(enumerate(lines)):
-            for i in range(len(self.visible_lines), idx + 1):
-                self.visible_lines.append(None)
+            # Append empty lines, i.e. canvas size++ if terminal size++
+            for i in range(len(self.display), idx + 1):
+                self.display.append(None)
 
             # Skip non-dirty lines, but always redraw the last line
-            if not all and not is_last and self.visible_lines[idx] == line:
+            # for keeping cursor at end of the last line
+            if not all and not is_last and self.display[idx] == line:
                 continue
 
             # Align cursor position
             if cursor != idx:
-                dist = min(abs(cursor - idx), len(self.visible_lines) - 1)
+                dist = min(abs(cursor - idx), len(self.display) - 1)
                 self.print('\r\033[{}{}'.format(dist, 'A' if cursor > idx else 'B'), end='')
 
-            wline = wrap(line, term_width)[0]
-            self.visible_lines[idx] = wline
+            wline = wrap(line, canvas_width)[0]
+            self.display[idx] = wline
 
             # Print content onto screen
             self.print('\r{}\033[K'.format(wline),
@@ -697,15 +745,10 @@ class Menu:
     def render(self):
         self.pager.clear()
 
-        title = (self.title is not None)
-
-        if title:
-            self.pager[0] = self.title
-
+        self.pager.top = self.title or []
         for idx, opt in enumerate(self.options):
-            self.pager[title + idx] = ('  ' if idx != self.idx else '> ') + opt
-
-        self.pager[title + len(self.options)] = str(self.message)
+            self.pager[idx] = ('  ' if idx != self.idx else '> ') + opt
+        self.pager.bottom = str(self.message)
 
         self.pager.render()
 

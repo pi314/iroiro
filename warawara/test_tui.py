@@ -982,7 +982,7 @@ class TestPager(TestCase):
         pager[1] = 'line3'
         self.eq(pager.lines, ['line0', 'line3'])
         pager.render()
-        self.eq(pager.visible_lines, ['line0', 'line3'])
+        self.eq(pager.display, ['line0', 'line3'])
         self.eq(self.terminal.recording, [
             '\rline0\033[K\n',
             '\rline3\033[K',
@@ -996,7 +996,7 @@ class TestPager(TestCase):
         pager.insert(1, 'line1')
         self.eq(pager.lines, ['line0', 'line1', 'line2', 'line3'])
         pager.render()
-        self.eq(pager.visible_lines, ['line0', 'line1', 'line2', 'line3'])
+        self.eq(pager.display, ['line0', 'line1', 'line2', 'line3'])
         self.eq(self.terminal.recording, [
             '\rline1\033[K\n',
             '\rline2\033[K\n',
@@ -1011,7 +1011,7 @@ class TestPager(TestCase):
         pager.insert(0, 'not visible')
         self.eq(pager.lines, ['not visible', 'line0', 'abc', 'def', 'line1', 'line2', 'line3'])
         pager.render()
-        self.eq(pager.visible_lines, ['def', 'line1', 'line2', 'line3'])
+        self.eq(pager.display, ['def', 'line1', 'line2', 'line3'])
         self.eq(self.terminal.recording, [
             '\r\033[3A',
             '\rdef\033[K\n',
@@ -1026,7 +1026,7 @@ class TestPager(TestCase):
         pager.pop(0)
         self.eq(pager.lines, ['abc', 'def', 'line1', 'line2', 'line3'])
         pager.render()
-        self.eq(pager.visible_lines, ['def', 'line1', 'line2', 'line3'])
+        self.eq(pager.display, ['def', 'line1', 'line2', 'line3'])
         self.eq(self.terminal.recording, [
             '\rline3\033[K',
             ])
@@ -1037,7 +1037,7 @@ class TestPager(TestCase):
         pager.pop()
         self.eq(pager.lines, ['abc', 'def', 'line1', 'line2'])
         pager.render()
-        self.eq(pager.visible_lines, ['abc', 'def', 'line1', 'line2'])
+        self.eq(pager.display, ['abc', 'def', 'line1', 'line2'])
         self.eq(self.terminal.recording, [
             '\r\033[3A',
             '\rabc\033[K\n',
@@ -1072,7 +1072,7 @@ class TestPager(TestCase):
         pager[2] = 'line2'
         self.eq(pager.lines, ['line0', 'line1', 'line2'])
         pager.render()
-        self.eq(pager.visible_lines, ['line0', 'line1', 'line2'])
+        self.eq(pager.display, ['line0', 'line1', 'line2'])
         self.eq(self.terminal.recording, [
             '\rline0\033[K\n',
             '\rline1\033[K\n',
@@ -1085,7 +1085,7 @@ class TestPager(TestCase):
         pager.clear()
         self.true(pager.empty)
         pager.render()
-        self.eq(pager.visible_lines, [''])
+        self.eq(pager.display, [''])
         self.eq(self.terminal.recording, [
             '\r\033[K\033[A',
             '\r\033[K\033[A',
@@ -1100,7 +1100,7 @@ class TestPager(TestCase):
         pager[2] = 'line2'
         self.eq(pager.lines, ['line0', 'line1', 'line2'])
         pager.render()
-        self.eq(pager.visible_lines, ['line0', 'line1', 'line2'])
+        self.eq(pager.display, ['line0', 'line1', 'line2'])
         self.eq(self.terminal.recording, [
             '\rline0\033[K\n',
             '\rline1\033[K\n',
@@ -1113,7 +1113,7 @@ class TestPager(TestCase):
         pager[:] = []
         self.eq(pager.lines, [])
         pager.render()
-        self.eq(pager.visible_lines, [''])
+        self.eq(pager.display, [''])
         self.eq(self.terminal.recording, [
             '\r\033[K\033[A',
             '\r\033[K\033[A',
