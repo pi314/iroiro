@@ -832,47 +832,47 @@ class TestGetch(TestCase):
         self.eq(self.killed, signal.SIGINT)
 
 
-class TestPseudoCanvas(TestCase):
+class TestPager(TestCase):
     def setUp(self):
         from .lib_test_utils import FakeTerminal
         self.terminal = FakeTerminal()
         self.patch('shutil.get_terminal_size', lambda: self.terminal.get_terminal_size())
 
     def test_data_storing(self):
-        pc = PseudoCanvas()
-        self.true(pc.empty)
+        pager = Pager()
+        self.true(pager.empty)
 
-        pc.append('wah1')
-        pc.append('wah2')
-        pc.append('wah3')
-        pc.extend(['wah4', 'wah5'])
-        self.eq(len(pc), 5)
-        self.false(pc.empty)
+        pager.append('wah1')
+        pager.append('wah2')
+        pager.append('wah3')
+        pager.extend(['wah4', 'wah5'])
+        self.eq(len(pager), 5)
+        self.false(pager.empty)
 
         self.eq(
-                [line for line in iter(pc)],
-                pc.lines,
+                [line for line in iter(pager)],
+                pager.lines,
                 )
 
-        self.eq(pc[1], 'wah2')
+        self.eq(pager[1], 'wah2')
 
-        pc[1] = 'wahwah'
-        self.eq(pc[1], 'wahwah')
+        pager[1] = 'wahwah'
+        self.eq(pager[1], 'wahwah')
 
-        pc[1:3] = ['slice1', 'slice2', 'slice3', 'slice4']
-        self.eq(pc.lines, ['wah1', 'slice1', 'slice2', 'slice3', 'slice4', 'wah4', 'wah5'])
+        pager[1:3] = ['slice1', 'slice2', 'slice3', 'slice4']
+        self.eq(pager.lines, ['wah1', 'slice1', 'slice2', 'slice3', 'slice4', 'wah4', 'wah5'])
 
     def test_auto_append(self):
-        pc = PseudoCanvas()
-        self.true(pc.empty)
+        pager = Pager()
+        self.true(pager.empty)
 
-        pc[2] = 'line3'
-        pc[1] = 'line2'
-        self.eq(len(pc), 3)
+        pager[2] = 'line3'
+        pager[1] = 'line2'
+        self.eq(len(pager), 3)
 
-        pc[4] = 'line5'
+        pager[4] = 'line5'
 
-        self.eq(pc.lines, [
+        self.eq(pager.lines, [
             '',
             'line2',
             'line3',
@@ -881,35 +881,35 @@ class TestPseudoCanvas(TestCase):
             ])
 
     def test_render_basic(self):
-        pc = PseudoCanvas()
-        pc.print = self.terminal.print
+        pager = Pager()
+        pager.print = self.terminal.print
 
         self.eq(self.terminal.lines, [''])
-        pc.render()
+        pager.render()
         self.eq(self.terminal.lines, [''])
 
         data = ['wah1', 'wah2', 'wah3']
-        pc.extend(data)
+        pager.extend(data)
 
         self.eq(self.terminal.lines, [''])
-        pc.render()
+        pager.render()
         self.eq(self.terminal.lines, data)
 
-        pc[1] = '哇啊'
+        pager[1] = '哇啊'
         self.eq(self.terminal.lines, data)
-        pc.render()
+        pager.render()
         self.eq(self.terminal.lines, ['wah1', '哇啊', 'wah3'])
 
     def test_render_horizontal_overflow(self):
-        pc = PseudoCanvas()
-        pc.print = self.terminal.print
+        pager = Pager()
+        pager.print = self.terminal.print
         self.eq(self.terminal.width, 80)
         self.eq(self.terminal.height, 24)
 
-        pc.append('哇' * 50)
-        pc.append('a' + '哇' * 50)
-        pc.append('aa' + '哇' * 50)
-        pc.render()
+        pager.append('哇' * 50)
+        pager.append('a' + '哇' * 50)
+        pager.append('aa' + '哇' * 50)
+        pager.render()
         self.eq(self.terminal.lines, [
             '哇' * 40,
             'a' + '哇' * 39,
@@ -917,18 +917,18 @@ class TestPseudoCanvas(TestCase):
             ])
 
     def test_render_vertical_overflow(self):
-        pc = PseudoCanvas()
-        pc.print = self.terminal.print
+        pager = Pager()
+        pager.print = self.terminal.print
         self.eq(self.terminal.width, 80)
         self.eq(self.terminal.height, 24)
 
         for i in range(50):
-            pc.append('哇 {}'.format(i))
+            pager.append('哇 {}'.format(i))
 
         self.terminal.recording = True
-        pc.render()
+        pager.render()
 
-        # Check pc sent 24 sequences for each individual line
+        # Check pager sent 24 sequences for each individual line
         self.eq(len(self.terminal.recording), 24)
         self.terminal.recording = False
 
@@ -942,9 +942,9 @@ class TestPseudoCanvas(TestCase):
 
         # Update a visible line and an invisible line
         self.terminal.recording = True
-        pc[5] = '哇 5 (new)'
-        pc[40] = '哇 40 (new)'
-        pc.render()
+        pager[5] = '哇 5 (new)'
+        pager[40] = '哇 40 (new)'
+        pager.render()
 
         # The last line is always updated in order to restore cursor position
         self.eq(self.terminal.recording, [
@@ -956,33 +956,33 @@ class TestPseudoCanvas(TestCase):
 
         # Try a hard re-render
         self.terminal.recording = True
-        pc[40] = '哇 40'
-        pc.render(all=True)
+        pager[40] = '哇 40'
+        pager.render(all=True)
         self.eq(self.terminal.recording, ['\r\033[23A'] +
                 ['\r哇 {}\033[K\n'.format(i) for i in range(26, 49)] +
                 ['\r哇 49\033[K'])
 
         self.terminal.recording = False
         self.terminal.recording = True
-        pc.pop()
-        pc.render(all=True)
+        pager.pop()
+        pager.render(all=True)
         self.eq(self.terminal.recording, ['\r\033[23A'] +
                 ['\r哇 {}\033[K\n'.format(i) for i in range(25, 48)] +
                 ['\r哇 48\033[K'])
 
     def test_pop_insert(self):
         self.terminal = FakeTerminal(lines=4)
-        pc = PseudoCanvas()
-        pc.print = self.terminal.print
+        pager = Pager()
+        pager.print = self.terminal.print
         self.eq(self.terminal.height, 4)
 
         # Normal print
         self.terminal.recording = True
-        pc[0] = 'line0'
-        pc[1] = 'line3'
-        self.eq(pc.lines, ['line0', 'line3'])
-        pc.render()
-        self.eq(pc.visible_lines, ['line0', 'line3'])
+        pager[0] = 'line0'
+        pager[1] = 'line3'
+        self.eq(pager.lines, ['line0', 'line3'])
+        pager.render()
+        self.eq(pager.visible_lines, ['line0', 'line3'])
         self.eq(self.terminal.recording, [
             '\rline0\033[K\n',
             '\rline3\033[K',
@@ -991,12 +991,12 @@ class TestPseudoCanvas(TestCase):
 
         # Insert two lines
         self.terminal.recording = True
-        pc[0] = 'line0'
-        pc.insert(1, 'line2')
-        pc.insert(1, 'line1')
-        self.eq(pc.lines, ['line0', 'line1', 'line2', 'line3'])
-        pc.render()
-        self.eq(pc.visible_lines, ['line0', 'line1', 'line2', 'line3'])
+        pager[0] = 'line0'
+        pager.insert(1, 'line2')
+        pager.insert(1, 'line1')
+        self.eq(pager.lines, ['line0', 'line1', 'line2', 'line3'])
+        pager.render()
+        self.eq(pager.visible_lines, ['line0', 'line1', 'line2', 'line3'])
         self.eq(self.terminal.recording, [
             '\rline1\033[K\n',
             '\rline2\033[K\n',
@@ -1006,12 +1006,12 @@ class TestPseudoCanvas(TestCase):
 
         # Insert more lines, some lines are becoming invisible
         self.terminal.recording = True
-        pc.insert(1, 'abc')
-        pc.insert(2, 'def')
-        pc.insert(0, 'not visible')
-        self.eq(pc.lines, ['not visible', 'line0', 'abc', 'def', 'line1', 'line2', 'line3'])
-        pc.render()
-        self.eq(pc.visible_lines, ['def', 'line1', 'line2', 'line3'])
+        pager.insert(1, 'abc')
+        pager.insert(2, 'def')
+        pager.insert(0, 'not visible')
+        self.eq(pager.lines, ['not visible', 'line0', 'abc', 'def', 'line1', 'line2', 'line3'])
+        pager.render()
+        self.eq(pager.visible_lines, ['def', 'line1', 'line2', 'line3'])
         self.eq(self.terminal.recording, [
             '\r\033[3A',
             '\rdef\033[K\n',
@@ -1022,11 +1022,11 @@ class TestPseudoCanvas(TestCase):
 
         # Pop invisible lines
         self.terminal.recording = True
-        pc.pop(0)
-        pc.pop(0)
-        self.eq(pc.lines, ['abc', 'def', 'line1', 'line2', 'line3'])
-        pc.render()
-        self.eq(pc.visible_lines, ['def', 'line1', 'line2', 'line3'])
+        pager.pop(0)
+        pager.pop(0)
+        self.eq(pager.lines, ['abc', 'def', 'line1', 'line2', 'line3'])
+        pager.render()
+        self.eq(pager.visible_lines, ['def', 'line1', 'line2', 'line3'])
         self.eq(self.terminal.recording, [
             '\rline3\033[K',
             ])
@@ -1034,10 +1034,10 @@ class TestPseudoCanvas(TestCase):
 
         # Pop last line, cause large redraw
         self.terminal.recording = True
-        pc.pop()
-        self.eq(pc.lines, ['abc', 'def', 'line1', 'line2'])
-        pc.render()
-        self.eq(pc.visible_lines, ['abc', 'def', 'line1', 'line2'])
+        pager.pop()
+        self.eq(pager.lines, ['abc', 'def', 'line1', 'line2'])
+        pager.render()
+        self.eq(pager.visible_lines, ['abc', 'def', 'line1', 'line2'])
         self.eq(self.terminal.recording, [
             '\r\033[3A',
             '\rabc\033[K\n',
@@ -1047,12 +1047,12 @@ class TestPseudoCanvas(TestCase):
             ])
         self.terminal.recording = False
 
-        # Pop last lines, cause canvas to shrink
+        # Pop last lines, cause pager to shrink
         self.terminal.recording = True
-        pc.pop()
-        pc.pop()
-        self.eq(pc.lines, ['abc', 'def'])
-        pc.render()
+        pager.pop()
+        pager.pop()
+        self.eq(pager.lines, ['abc', 'def'])
+        pager.render()
         self.eq(self.terminal.recording, [
             '\r\033[K\033[A',
             '\r\033[K\033[A',
@@ -1062,17 +1062,17 @@ class TestPseudoCanvas(TestCase):
 
     def test_clear(self):
         self.terminal = FakeTerminal(lines=4)
-        pc = PseudoCanvas()
-        pc.print = self.terminal.print
+        pager = Pager()
+        pager.print = self.terminal.print
 
         # Normal print
         self.terminal.recording = True
-        pc[0] = 'line0'
-        pc[1] = 'line1'
-        pc[2] = 'line2'
-        self.eq(pc.lines, ['line0', 'line1', 'line2'])
-        pc.render()
-        self.eq(pc.visible_lines, ['line0', 'line1', 'line2'])
+        pager[0] = 'line0'
+        pager[1] = 'line1'
+        pager[2] = 'line2'
+        self.eq(pager.lines, ['line0', 'line1', 'line2'])
+        pager.render()
+        self.eq(pager.visible_lines, ['line0', 'line1', 'line2'])
         self.eq(self.terminal.recording, [
             '\rline0\033[K\n',
             '\rline1\033[K\n',
@@ -1082,10 +1082,10 @@ class TestPseudoCanvas(TestCase):
 
         # Clear
         self.terminal.recording = True
-        pc.clear()
-        self.true(pc.empty)
-        pc.render()
-        self.eq(pc.visible_lines, [''])
+        pager.clear()
+        self.true(pager.empty)
+        pager.render()
+        self.eq(pager.visible_lines, [''])
         self.eq(self.terminal.recording, [
             '\r\033[K\033[A',
             '\r\033[K\033[A',
@@ -1095,12 +1095,12 @@ class TestPseudoCanvas(TestCase):
 
         # Normal print
         self.terminal.recording = True
-        pc[0] = 'line0'
-        pc[1] = 'line1'
-        pc[2] = 'line2'
-        self.eq(pc.lines, ['line0', 'line1', 'line2'])
-        pc.render()
-        self.eq(pc.visible_lines, ['line0', 'line1', 'line2'])
+        pager[0] = 'line0'
+        pager[1] = 'line1'
+        pager[2] = 'line2'
+        self.eq(pager.lines, ['line0', 'line1', 'line2'])
+        pager.render()
+        self.eq(pager.visible_lines, ['line0', 'line1', 'line2'])
         self.eq(self.terminal.recording, [
             '\rline0\033[K\n',
             '\rline1\033[K\n',
@@ -1110,10 +1110,10 @@ class TestPseudoCanvas(TestCase):
 
         # Clear by slice assignment
         self.terminal.recording = True
-        pc[:] = []
-        self.eq(pc.lines, [])
-        pc.render()
-        self.eq(pc.visible_lines, [''])
+        pager[:] = []
+        self.eq(pager.lines, [])
+        pager.render()
+        self.eq(pager.visible_lines, [''])
         self.eq(self.terminal.recording, [
             '\r\033[K\033[A',
             '\r\033[K\033[A',

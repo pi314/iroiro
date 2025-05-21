@@ -592,7 +592,7 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
 
 
 @export
-class PseudoCanvas:
+class Pager:
     def __init__(self):
         self.lines = []
 
@@ -687,7 +687,7 @@ class PseudoCanvas:
 class Menu:
     def __init__(self, title, options, *,
                  format=None, arrow='>', type=None, onkey=None, wrap=False):
-        self.canvas = PseudoCanvas()
+        self.pager = Pager()
         self.title = title
         self.options = options
         self.message = ''
@@ -695,19 +695,19 @@ class Menu:
         self.idx = 0
 
     def render(self):
-        self.canvas.clear()
+        self.pager.clear()
 
         title = (self.title is not None)
 
         if title:
-            self.canvas[0] = self.title
+            self.pager[0] = self.title
 
         for idx, opt in enumerate(self.options):
-            self.canvas[title + idx] = ('  ' if idx != self.idx else '> ') + opt
+            self.pager[title + idx] = ('  ' if idx != self.idx else '> ') + opt
 
-        self.canvas[title + len(self.options)] = str(self.message)
+        self.pager[title + len(self.options)] = str(self.message)
 
-        self.canvas.render()
+        self.pager.render()
 
     def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
         # with HijackStdio():
