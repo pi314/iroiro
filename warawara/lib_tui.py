@@ -656,9 +656,9 @@ class Pager:
 
     def render(self, *, all=None):
         # Get effective canvas size
+        import shutil
+        term_size = shutil.get_terminal_size()
         if not self.width or not self.height:
-            import shutil
-            term_size = shutil.get_terminal_size()
             canvas_width = self.width or term_size.columns
             canvas_height = self.height or term_size.lines
         else:

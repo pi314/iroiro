@@ -1120,3 +1120,32 @@ class TestPager(TestCase):
             '\r\033[K',
             ])
         self.terminal.recording = False
+
+    def test_size_limits(self):
+        self.terminal = FakeTerminal()
+        self.eq(self.terminal.width, 80)
+        self.eq(self.terminal.height, 24)
+
+        pager = Pager(lines=5, columns=8)
+        pager.print = self.terminal.print
+
+        self.terminal.recording = True
+        pager[0] = 'line0line0'
+        pager[1] = 'line1line1'
+        pager[2] = 'line2line2'
+        pager[3] = 'line3line3'
+        pager[4] = 'line4line4'
+        pager[5] = 'line5line5'
+        pager[6] = 'line6line6'
+        self.eq(len(pager), 7)
+        pager.render()
+        self.eq(len(pager.display), 5)
+
+        self.eq(self.terminal.recording, [
+            '\rline2lin\033[K\n',
+            '\rline3lin\033[K\n',
+            '\rline4lin\033[K\n',
+            '\rline5lin\033[K\n',
+            '\rline6lin\033[K',
+            ])
+        self.terminal.recording = False
