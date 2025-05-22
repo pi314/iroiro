@@ -593,9 +593,12 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
 
 @export
 class Pager:
-    def __init__(self, lines=None, columns=None):
+    def __init__(self, lines=None, columns=None, flex=False):
         self.height = lines
         self.width = columns
+        self.flex = flex
+        self.scroll = 0
+
         self.top = []
         self.lines = []
         self.bottom = []
@@ -674,7 +677,7 @@ class Pager:
         elif self.top is None:
             top_lines = []
         else:
-            top_lines = [str(self.top)]
+            top_lines = str(self.top).split('\n')
 
         # Set sticky bottom lines
         if isinstance(self.bottom, list):
@@ -682,12 +685,15 @@ class Pager:
         elif self.bottom is None:
             bottom_lines = []
         else:
-            bottom_lines = [str(self.bottom)]
+            bottom_lines = str(self.bottom).split('\n')
 
-        # Set sticky content lines
+        # Set content lines
         content_height = canvas_height - len(top_lines) - len(bottom_lines)
         if content_height:
-            content_lines = self.lines[-content_height:]
+            from .lib_math import clamp
+            self.scroll = clamp(0, self.scroll, len(self.lines)-content_height)
+            scroll_bottom = self.scroll + content_height
+            content_lines = self.lines[self.scroll:scroll_bottom]
         else:
             content_lines = []
 
@@ -768,10 +774,16 @@ class Menu:
                 self.render()
                 break
             elif ch == 't':
-                if self.title:
+                if self.title == 'new title':
+                    self.title = 'new multiline\ntitle'
+                elif self.title:
                     self.title = None
                 else:
                     self.title = 'new title'
+            elif ch == 'j':
+                self.pager.scroll += 1
+            elif ch == 'k':
+                self.pager.scroll -= 1
             else:
                 self.message = repr(ch)
 
