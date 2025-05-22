@@ -688,13 +688,14 @@ class Pager:
             bottom_lines = str(self.bottom).split('\n')
 
         # Set content lines
-        content_height = canvas_height - len(top_lines) - len(bottom_lines)
+        content_height = max(0, canvas_height - len(top_lines) - len(bottom_lines))
         if content_height:
             from .lib_math import clamp
-            self.scroll = clamp(0, self.scroll, len(self.lines)-content_height)
+            self.scroll = clamp(0, self.scroll, max(0, len(self.lines)-content_height))
             scroll_bottom = self.scroll + content_height
             content_lines = self.lines[self.scroll:scroll_bottom]
         else:
+            self.scroll = 0
             content_lines = []
 
         # Skip out-of-screen lines, i.e. canvas size-- if terminal size--
@@ -761,6 +762,8 @@ class Menu:
     def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
         # with HijackStdio():
             # with ExceptionSuppressor(suppress):
+
+        self.message = self.pager.scroll
         while True:
             self.render()
             ch = getch(capture='fs')
@@ -782,8 +785,10 @@ class Menu:
                     self.title = 'new title'
             elif ch == 'j':
                 self.pager.scroll += 1
+                self.message = self.pager.scroll
             elif ch == 'k':
                 self.pager.scroll -= 1
+                self.message = self.pager.scroll
             else:
                 self.message = repr(ch)
 
