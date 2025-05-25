@@ -592,10 +592,10 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
 
 
 class Pagee:
-    def __init__(self, text):
+    def __init__(self, text, offset, visible):
         self.text = str(text)
-        self.visible = False
         self.offset = None
+        self.visible = False
 
 
 class PageeGroup:
@@ -612,21 +612,21 @@ class PageeGroup:
         return self.lines[idx]
 
     def __setitem__(self, idx, line):
-        self.lines[idx] = Pagee(line)
+        self.lines[idx] = line
 
     @property
     def empty(self):
         return not self.lines
 
     def append(self, line=''):
-        self.lines.append(Pagee(line))
+        self.lines.append(line)
 
     def extend(self, lines=[]):
         for line in lines:
-            self.append(Pagee(line))
+            self.append(line)
 
     def insert(self, index, line):
-        return self.lines.insert(index, Pagee(line))
+        return self.lines.insert(index, line)
 
     def pop(self, index=-1):
         return self.lines.pop(index)
@@ -755,7 +755,7 @@ class Pager:
                 dist = min(abs(cursor - idx), len(self.display) - 1)
                 self.print('\r\033[{}{}'.format(dist, 'A' if cursor > idx else 'B'), end='')
 
-            wline = wrap(line.text, self.width)[0]
+            wline = wrap(line, self.width)[0]
             self.display[idx] = wline
 
             # Print content onto screen
@@ -825,7 +825,7 @@ class Menu:
                 self.pager.scroll -= 1
                 self.message = 'scroll=' + str(self.pager.scroll)
             elif ch == 'c':
-                self.message = 'cursor={} visible={}'.format(self.idx, self.pager.top[self.idx].visible)
+                self.message = 'cursor={} visible={}'.format(self.idx, self.pager[self.idx].visible)
             else:
                 self.message = repr(ch)
 
