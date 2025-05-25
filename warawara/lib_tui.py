@@ -594,8 +594,8 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
 class Pagee:
     def __init__(self, text, offset, visible):
         self.text = str(text)
-        self.offset = None
-        self.visible = False
+        self.offset = offset
+        self.visible = visible
 
 
 class PageeGroup:
@@ -660,7 +660,11 @@ class Pager:
         return iter(self.middle)
 
     def __getitem__(self, idx):
-        return self.middle[idx]
+        content_height = max(0, self.height - len(self.top) - len(self.bottom))
+        return Pagee(
+                text=self.middle[idx],
+                offset=len(self.top) - self.scroll,
+                visible=(self.scroll) <= idx <= (self.scroll + content_height - 1))
 
     def __setitem__(self, idx, line):
         if isinstance(idx, slice):
