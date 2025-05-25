@@ -807,8 +807,10 @@ class Menu:
 
             if ch == 'up':
                 self.idx = (self.idx + len(self.options) - 1) % len(self.options)
+                self.message = 'cursor={} visible={}'.format(self.idx, self.pager[self.idx].visible)
             elif ch == 'down':
                 self.idx = (self.idx + 1) % len(self.options)
+                self.message = 'cursor={} visible={}'.format(self.idx, self.pager[self.idx].visible)
             elif ch in ('q', 'ctrl+c', KEY_FS):
                 self.message = repr(ch)
                 self.render()
