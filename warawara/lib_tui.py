@@ -592,21 +592,26 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
 
 
 class Pagee:
-    def __init__(self, text, offset, visible):
+    def __init__(self, text, section, offset, visible):
         self.text = str(text)
+        self.section = section
         self.offset = offset
         self.visible = visible
 
 
-class PageeGroup:
-    def __init__(self):
+class Subpager:
+    def __init__(self, parent, section):
         self.lines = []
+        self.parent = parent
+        self.section = section
 
     def __len__(self):
         return len(self.lines)
 
     def __iter__(self):
-        return iter(self.lines)
+        for pagee in self.parent:
+            if pagee.section == self.section:
+                yield pagee
 
     def __getitem__(self, idx):
         return self.lines[idx]
@@ -641,17 +646,43 @@ class Pager:
         self.max_height = max_height
         self.max_width = max_width
         self.flex = flex
-        self.height = max_height
-        self.width = max_width
         self._scroll = 0
 
-        self.header = PageeGroup()
-        self.body = PageeGroup()
-        self.footer = PageeGroup()
+        self.header = Subpager(parent=self, section='header')
+        self.body = Subpager(parent=self, section='body')
+        self.footer = Subpager(parent=self, section='footer')
 
         import builtins
         self.print = builtins.print
         self.display = []
+
+    @property
+    def term_size(self):
+        import shutil
+        return shutil.get_terminal_size()
+
+    @property
+    def term_height(self):
+        return self.term_size.lines
+
+    @property
+    def term_width(self):
+        return self.term_size.columns
+
+    @property
+    def height(self):
+        return min(
+                self.max_height or self.term_height,
+                self.term_height,
+                len(self.header) + len(self.body) + len(self.footer)
+                )
+
+    @property
+    def width(self):
+        return min(
+                self.max_width or self.term_width,
+                self.term_width,
+                )
 
     def __len__(self):
         return len(self.body)
@@ -663,8 +694,10 @@ class Pager:
         content_height = max(0, self.height - len(self.header) - len(self.footer))
         return Pagee(
                 text=self.body[idx],
+                section='body',
                 offset=len(self.header) - self.scroll,
-                visible=(self.scroll) <= idx <= (self.scroll + content_height - 1))
+                visible=(self.scroll) <= idx <= (self.scroll + content_height - 1)
+                )
 
     def __setitem__(self, idx, line):
         if isinstance(idx, slice):
@@ -679,7 +712,41 @@ class Pager:
 
     @property
     def lines(self):
-        return tuple(self.header.lines + self.body.lines + self.footer.lines)
+        avail_space = self.height
+        occu_lines = 0
+
+        for idx, line in enumerate(self.header.lines):
+            pagee = Pagee(text=line,
+                        section='header',
+                        offset=idx,
+                        visible=avail_space > (not self.footer.empty),)
+            yield pagee
+            if pagee.visible:
+                avail_space -= 1
+                occu_lines += 1
+
+        for idx, line in enumerate(self.body.lines):
+            pagee = Pagee(text=line,
+                        section='body',
+                        offset=len(self.header) + idx,
+                        visible=idx >= self.scroll and avail_space > (not self.footer.empty),)
+            yield pagee
+            if pagee.visible:
+                avail_space -= 1
+                occu_lines += 1
+
+        for idx, line in enumerate(self.footer.lines):
+            yield Pagee(text=line,
+                        section='footer',
+                        offset=occu_lines + idx,
+                        visible=avail_space > 0,)
+            avail_space -= 1
+
+    @property
+    def visible(self):
+        for line in self.lines:
+            if line.visible:
+                yield line
 
     @property
     def empty(self):
@@ -705,6 +772,7 @@ class Pager:
 
     @property
     def scroll(self):
+        self.scroll = self._scroll
         return self._scroll
 
     @scroll.setter
@@ -713,33 +781,24 @@ class Pager:
 
         content_height = max(0, self.height - len(self.header) - len(self.footer))
         from .lib_math import clamp
-        self._scroll = clamp(0, self.scroll, max(0, len(self.body)-content_height))
+        self._scroll = clamp(0, self._scroll, max(0, len(self.body)-content_height))
 
     def render(self, *, all=None):
-        # Get effective canvas size
-        import shutil
-        term_size = shutil.get_terminal_size()
-        self.width = min(self.max_width or term_size.columns, term_size.columns)
-        self.height = min(self.max_height or term_size.lines, term_size.lines)
-
         # Skip out-of-screen lines, i.e. canvas size-- if terminal size--
         self.display = self.display[-self.height:] or [None]
 
-        content_height = max(0, self.height - len(self.header) - len(self.footer))
-        content_lines = self.body[self.scroll:(self.scroll + content_height)]
-
-        lines = ((list(self.header) + content_lines + list(self.footer)))[-self.height:] or ['']
+        visible_lines = list(self.visible)
 
         cursor = len(self.display) - 1
 
-        for i in range(cursor, max(len(lines) - 1, 0), -1):
+        for i in range(cursor, max(len(visible_lines) - 1, 0), -1):
             self.print('\r\033[K\033[A', end='')
             self.display.pop()
             cursor -= 1
 
         # Assumed that cursor is always at the end of last line
         from .lib_itertools import lookahead
-        for (idx, line), is_last in lookahead(enumerate(lines)):
+        for (idx, line), is_last in lookahead(enumerate(visible_lines)):
             # Append empty lines, i.e. canvas size++ if terminal size++
             for i in range(len(self.display), idx + 1):
                 self.display.append(None)
@@ -754,7 +813,7 @@ class Pager:
                 dist = min(abs(cursor - idx), len(self.display) - 1)
                 self.print('\r\033[{}{}'.format(dist, 'A' if cursor > idx else 'B'), end='')
 
-            wline = wrap(line, self.width)[0]
+            wline = wrap(line.text, self.width)[0]
             self.display[idx] = wline
 
             # Print content onto screen
@@ -769,7 +828,7 @@ class Pager:
 class Menu:
     def __init__(self, title, options, *,
                  format=None, arrow='>', type=None, onkey=None, wrap=False):
-        self.pager = Pager(max_height=4)
+        self.pager = Pager(max_height=5)
         self.title = title
         self.options = options
         self.message = ''
@@ -780,7 +839,7 @@ class Menu:
         self.pager.clear()
 
         if self.title:
-            self.pager.header.append(self.title)
+            self.pager.header.extend(self.title.split('\n'))
 
         for idx, opt in enumerate(self.options):
             self.pager[idx] = ('  ' if idx != self.idx else '> ') + opt
@@ -797,10 +856,10 @@ class Menu:
             self.render()
             ch = getch(capture='fs')
 
-            if ch == 'up':
+            if ch in ('up', 'k'):
                 self.idx = (self.idx + len(self.options) - 1) % len(self.options)
                 self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
-            elif ch == 'down':
+            elif ch in ('down', 'j'):
                 self.idx = (self.idx + 1) % len(self.options)
                 self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
             elif ch in ('q', 'ctrl+c', KEY_FS):
@@ -816,10 +875,10 @@ class Menu:
                     self.title = 'new title'
             elif ch == 's':
                 self.message = 'scroll=' + str(self.pager.scroll)
-            elif ch == 'j':
+            elif ch == 'ctrl-e':
                 self.pager.scroll += 1
                 self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
-            elif ch == 'k':
+            elif ch == 'ctrl-y':
                 self.pager.scroll -= 1
                 self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
             else:
