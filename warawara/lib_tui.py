@@ -643,8 +643,8 @@ class Subpager:
 @export
 class Pager:
     def __init__(self, max_height=None, max_width=None, flex=False):
-        self.max_height = max_height
-        self.max_width = max_width
+        self._max_height = max_height
+        self._max_width = max_width
         self.flex = flex
         self._scroll = 0
 
@@ -670,11 +670,31 @@ class Pager:
         return self.term_size.columns
 
     @property
+    def max_height(self):
+        return self._max_height
+
+    @max_height.setter
+    def max_height(self, value):
+        self._max_height = max(value or 0, 0)
+
+    @property
+    def max_width(self):
+        return self._max_width
+
+    @max_width.setter
+    def max_width(self, value):
+        self._max_width = max(value, 0)
+
+    @property
     def height(self):
+        if self.flex and self.max_height:
+            content_total_height = self.max_height
+        else:
+            content_total_height = len(self.header) + len(self.body) + len(self.footer)
         return min(
                 self.max_height or self.term_height,
                 self.term_height,
-                len(self.header) + len(self.body) + len(self.footer)
+                content_total_height,
                 )
 
     @property
@@ -719,7 +739,7 @@ class Pager:
             pagee = Pagee(text=line,
                         section='header',
                         offset=idx,
-                        visible=avail_space > (not self.footer.empty),)
+                        visible=avail_space > (idx > 0 and not self.footer.empty),)
             yield pagee
             if pagee.visible:
                 avail_space -= 1
@@ -728,6 +748,17 @@ class Pager:
         for idx, line in enumerate(self.body.lines):
             pagee = Pagee(text=line,
                         section='body',
+                        offset=len(self.header) + idx,
+                        visible=idx >= self.scroll and avail_space > (not self.footer.empty),)
+            yield pagee
+            if pagee.visible:
+                avail_space -= 1
+                occu_lines += 1
+
+        for idx, line in enumerate([''] * (avail_space - len(self.footer.lines)),
+                             start=len(self.body.lines)):
+            pagee = Pagee(text=line,
+                        section='padding',
                         offset=len(self.header) + idx,
                         visible=idx >= self.scroll and avail_space > (not self.footer.empty),)
             yield pagee
@@ -785,7 +816,7 @@ class Pager:
 
     def render(self, *, all=None):
         # Skip out-of-screen lines, i.e. canvas size-- if terminal size--
-        self.display = self.display[-self.height:] or [None]
+        self.display = self.display[-self.term_height:] or [None]
 
         visible_lines = list(self.visible)
 
@@ -828,7 +859,7 @@ class Pager:
 class Menu:
     def __init__(self, title, options, *,
                  format=None, arrow='>', type=None, onkey=None, wrap=False):
-        self.pager = Pager(max_height=5)
+        self.pager = Pager(max_height=5, flex=True)
         self.title = title
         self.options = options
         self.message = ''
@@ -852,16 +883,20 @@ class Menu:
         # with HijackStdio():
             # with ExceptionSuppressor(suppress):
 
+        def pager_info():
+            self.message = 'cursor={} visible={} scroll={} height={}'.format(
+                    self.idx, self.pager[self.idx].visible, self.pager.scroll, self.pager.height)
+
         while True:
             self.render()
             ch = getch(capture='fs')
 
             if ch in ('up', 'k'):
                 self.idx = (self.idx + len(self.options) - 1) % len(self.options)
-                self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
+                pager_info()
             elif ch in ('down', 'j'):
                 self.idx = (self.idx + 1) % len(self.options)
-                self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
+                pager_info()
             elif ch in ('q', 'ctrl+c', KEY_FS):
                 self.message = repr(ch)
                 self.render()
@@ -877,10 +912,25 @@ class Menu:
                 self.message = 'scroll=' + str(self.pager.scroll)
             elif ch == 'ctrl-e':
                 self.pager.scroll += 1
-                self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
+                pager_info()
             elif ch == 'ctrl-y':
                 self.pager.scroll -= 1
-                self.message = 'cursor={} visible={} scroll={}'.format(self.idx, self.pager[self.idx].visible, self.pager.scroll)
+                pager_info()
+            elif ch == '-':
+                if not self.pager.max_height:
+                    self.pager.max_height = self.pager.height - 1
+                else:
+                    self.pager.max_height -= 1
+                pager_info()
+            elif ch == '+':
+                if not self.pager.max_height:
+                    self.pager.max_height = self.pager.height + 1
+                else:
+                    self.pager.max_height += 1
+                pager_info()
+            elif ch == '=':
+                self.pager.max_height = None
+                pager_info()
             else:
                 self.message = repr(ch)
 
