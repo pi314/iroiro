@@ -841,26 +841,25 @@ class TestPager(TestCase):
     def test_data_storing(self):
         pager = Pager()
         self.true(pager.empty)
+        self.eq(pager.lines, tuple())
 
         pager.append('wah1')
         pager.append('wah2')
         pager.append('wah3')
         pager.extend(['wah4', 'wah5'])
         self.eq(len(pager), 5)
+        self.eq(pager.lines, ('wah1', 'wah2', 'wah3', 'wah4', 'wah5'))
         self.false(pager.empty)
 
-        self.eq(
-                [line for line in iter(pager)],
-                pager.lines,
-                )
-
-        self.eq(pager[1], 'wah2')
+        self.eq(pager[1].text, 'wah2')
 
         pager[1] = 'wahwah'
-        self.eq(pager[1], 'wahwah')
+        self.eq(pager[1].text, 'wahwah')
 
         pager[1:3] = ['slice1', 'slice2', 'slice3', 'slice4']
-        self.eq(pager.lines, ['wah1', 'slice1', 'slice2', 'slice3', 'slice4', 'wah4', 'wah5'])
+        self.eq(pager.lines,
+                ('wah1', 'slice1', 'slice2', 'slice3', 'slice4', 'wah4', 'wah5')
+                )
 
     def test_auto_append(self):
         pager = Pager()
@@ -872,13 +871,13 @@ class TestPager(TestCase):
 
         pager[4] = 'line5'
 
-        self.eq(pager.lines, [
+        self.eq(pager.lines, (
             '',
             'line2',
             'line3',
             '',
             'line5',
-            ])
+            ))
 
     def test_render_basic(self):
         pager = Pager()
@@ -916,205 +915,147 @@ class TestPager(TestCase):
             'aa' + '哇' * 39,
             ])
 
-    def test_render_vertical_overflow(self):
-        pager = Pager()
-        pager.print = self.terminal.print
-        self.eq(self.terminal.width, 80)
-        self.eq(self.terminal.height, 24)
+    def get_small_terminal_wah_pager(self, **kwargs):
+        # Use a smaller terminal to make output less
+        self.terminal = FakeTerminal(lines=5, columns=8)
+        self.eq(self.terminal.width, 8)
+        self.eq(self.terminal.height, 5)
 
-        for i in range(50):
+        pager = Pager(**kwargs)
+        pager.print = self.terminal.print
+
+        for i in range(10):
             pager.append('哇 {}'.format(i))
+
+        return pager
+
+    def test_render_vertical_overflow(self):
+        pager = self.get_small_terminal_wah_pager()
 
         self.terminal.recording = True
         pager.render()
-
-        # Check pager sent 24 sequences for each individual line
-        self.eq(len(self.terminal.recording), 24)
+        # Check output sequence
+        self.eq(self.terminal.recording, [
+            '\r哇 0\033[K\n',
+            '\r哇 1\033[K\n',
+            '\r哇 2\033[K\n',
+            '\r哇 3\033[K\n',
+            '\r哇 4\033[K',
+            ])
         self.terminal.recording = False
 
-        # Check terminal has 24 lines
-        self.eq(len(self.terminal.lines), 24)
-        for i in range(26, 50):
-            self.eq(self.terminal.lines[i - 26], '哇 {}'.format(i))
+        # Check terminal has 5 lines
+        self.eq(len(self.terminal.lines), 5)
+        for i in range(5):
+            self.eq(self.terminal.lines[i], '哇 {}'.format(i))
 
         # Check cursor position
-        self.eq(self.terminal.cursor.y, 23)
+        self.eq(self.terminal.cursor.y, 4)
+
+    def test_partial_re_render(self):
+        pager = self.get_small_terminal_wah_pager()
+        pager.render()
 
         # Update a visible line and an invisible line
         self.terminal.recording = True
-        pager[5] = '哇 5 (new)'
-        pager[40] = '哇 40 (new)'
+        pager[2] = '哇 2 (new)'
+        pager[17] = '哇 17 (new)'
         pager.render()
 
         # The last line is always updated in order to restore cursor position
         self.eq(self.terminal.recording, [
-            '\r\033[9A',
-            '\r哇 40 (new)\033[K\n',
-            '\r\033[8B',
-            '\r哇 49\033[K'])
+            '\r\033[2A',
+            '\r哇 2 (ne\033[K\n',
+            '\r\033[1B',
+            '\r哇 4\033[K'])
         self.terminal.recording = False
 
-        # Try a hard re-render
-        self.terminal.recording = True
-        pager[40] = '哇 40'
-        pager.render(all=True)
-        self.eq(self.terminal.recording, ['\r\033[23A'] +
-                ['\r哇 {}\033[K\n'.format(i) for i in range(26, 49)] +
-                ['\r哇 49\033[K'])
+    def test_hard_re_render(self):
+        pager = self.get_small_terminal_wah_pager()
+        pager.render()
 
-        self.terminal.recording = False
+        # A hard re-render
         self.terminal.recording = True
-        pager.pop()
+        pager[3] = '哇 3'
         pager.render(all=True)
-        self.eq(self.terminal.recording, ['\r\033[23A'] +
-                ['\r哇 {}\033[K\n'.format(i) for i in range(25, 48)] +
-                ['\r哇 48\033[K'])
+        self.eq(self.terminal.recording, [
+            '\r\033[4A',
+            '\r哇 0\033[K\n',
+            '\r哇 1\033[K\n',
+            '\r哇 2\033[K\n',
+            '\r哇 3\033[K\n',
+            '\r哇 4\033[K'])
+        self.terminal.recording = False
 
     def test_pop_insert(self):
-        self.terminal = FakeTerminal(lines=4)
-        pager = Pager()
-        pager.print = self.terminal.print
-        self.eq(self.terminal.height, 4)
-
-        # Normal print
-        self.terminal.recording = True
-        pager[0] = 'line0'
-        pager[1] = 'line3'
-        self.eq(pager.lines, ['line0', 'line3'])
+        pager = self.get_small_terminal_wah_pager()
         pager.render()
-        self.eq(pager.display, ['line0', 'line3'])
-        self.eq(self.terminal.recording, [
-            '\rline0\033[K\n',
-            '\rline3\033[K',
-            ])
-        self.terminal.recording = False
 
-        # Insert two lines
-        self.terminal.recording = True
-        pager[0] = 'line0'
-        pager.insert(1, 'line2')
-        pager.insert(1, 'line1')
-        self.eq(pager.lines, ['line0', 'line1', 'line2', 'line3'])
-        pager.render()
-        self.eq(pager.display, ['line0', 'line1', 'line2', 'line3'])
-        self.eq(self.terminal.recording, [
-            '\rline1\033[K\n',
-            '\rline2\033[K\n',
-            '\rline3\033[K',
-            ])
-        self.terminal.recording = False
-
-        # Insert more lines, some lines are becoming invisible
-        self.terminal.recording = True
-        pager.insert(1, 'abc')
-        pager.insert(2, 'def')
-        pager.insert(0, 'not visible')
-        self.eq(pager.lines, ['not visible', 'line0', 'abc', 'def', 'line1', 'line2', 'line3'])
-        pager.render()
-        self.eq(pager.display, ['def', 'line1', 'line2', 'line3'])
-        self.eq(self.terminal.recording, [
-            '\r\033[3A',
-            '\rdef\033[K\n',
-            '\r\033[2B',
-            '\rline3\033[K',
-            ])
-        self.terminal.recording = False
-
-        # Pop invisible lines
+        # pop line[0] and line[2] and then re-render
         self.terminal.recording = True
         pager.pop(0)
-        pager.pop(0)
-        self.eq(pager.lines, ['abc', 'def', 'line1', 'line2', 'line3'])
+        pager.pop(2)
+        pager.insert(3, '哇 new')
         pager.render()
-        self.eq(pager.display, ['def', 'line1', 'line2', 'line3'])
         self.eq(self.terminal.recording, [
-            '\rline3\033[K',
-            ])
+            '\r\033[4A',
+            '\r哇 1\033[K\n',
+            '\r哇 2\033[K\n',
+            '\r哇 4\033[K\n',
+            '\r哇 new\033[K\n',
+            '\r哇 5\033[K'])
         self.terminal.recording = False
 
-        # Pop last line, cause large redraw
-        self.terminal.recording = True
-        pager.pop()
-        self.eq(pager.lines, ['abc', 'def', 'line1', 'line2'])
+    def test_scrolling(self):
+        pager = self.get_small_terminal_wah_pager()
         pager.render()
-        self.eq(pager.display, ['abc', 'def', 'line1', 'line2'])
-        self.eq(self.terminal.recording, [
-            '\r\033[3A',
-            '\rabc\033[K\n',
-            '\rdef\033[K\n',
-            '\rline1\033[K\n',
-            '\rline2\033[K',
-            ])
-        self.terminal.recording = False
 
-        # Pop last lines, cause pager to shrink
         self.terminal.recording = True
-        pager.pop()
-        pager.pop()
-        self.eq(pager.lines, ['abc', 'def'])
+        pager[6] = '哇 6 (new)'
+        pager.scroll += 2
         pager.render()
         self.eq(self.terminal.recording, [
-            '\r\033[K\033[A',
-            '\r\033[K\033[A',
-            '\rdef\033[K',
-            ])
+            '\r\033[4A',
+            '\r哇 2\033[K\n',
+            '\r哇 3\033[K\n',
+            '\r哇 4\033[K\n',
+            '\r哇 5\033[K\n',
+            '\r哇 6 (ne\033[K'])
         self.terminal.recording = False
 
     def test_clear(self):
-        self.terminal = FakeTerminal(lines=4)
-        pager = Pager()
-        pager.print = self.terminal.print
-
-        # Normal print
-        self.terminal.recording = True
-        pager[0] = 'line0'
-        pager[1] = 'line1'
-        pager[2] = 'line2'
-        self.eq(pager.lines, ['line0', 'line1', 'line2'])
+        pager = self.get_small_terminal_wah_pager()
         pager.render()
-        self.eq(pager.display, ['line0', 'line1', 'line2'])
-        self.eq(self.terminal.recording, [
-            '\rline0\033[K\n',
-            '\rline1\033[K\n',
-            '\rline2\033[K',
-            ])
-        self.terminal.recording = False
 
         # Clear
         self.terminal.recording = True
         pager.clear()
         self.true(pager.empty)
+        self.eq(pager.lines, tuple())
         pager.render()
-        self.eq(pager.display, [''])
         self.eq(self.terminal.recording, [
+            '\r\033[K\033[A',
+            '\r\033[K\033[A',
             '\r\033[K\033[A',
             '\r\033[K\033[A',
             '\r\033[K',
             ])
+        self.eq(pager.display, tuple())
         self.terminal.recording = False
 
-        # Normal print
-        self.terminal.recording = True
-        pager[0] = 'line0'
-        pager[1] = 'line1'
-        pager[2] = 'line2'
-        self.eq(pager.lines, ['line0', 'line1', 'line2'])
+    def test_clear_by_slice_assignment(self):
+        pager = self.get_small_terminal_wah_pager()
         pager.render()
-        self.eq(pager.display, ['line0', 'line1', 'line2'])
-        self.eq(self.terminal.recording, [
-            '\rline0\033[K\n',
-            '\rline1\033[K\n',
-            '\rline2\033[K',
-            ])
-        self.terminal.recording = False
 
         # Clear by slice assignment
         self.terminal.recording = True
         pager[:] = []
-        self.eq(pager.lines, [])
+        self.eq(pager.lines, tuple())
         pager.render()
-        self.eq(pager.display, [''])
+        self.eq(pager.display, tuple())
         self.eq(self.terminal.recording, [
+            '\r\033[K\033[A',
+            '\r\033[K\033[A',
             '\r\033[K\033[A',
             '\r\033[K\033[A',
             '\r\033[K',
@@ -1126,7 +1067,7 @@ class TestPager(TestCase):
         self.eq(self.terminal.width, 80)
         self.eq(self.terminal.height, 24)
 
-        pager = Pager(lines=5, columns=8)
+        pager = Pager(max_height=5, max_width=8)
         pager.print = self.terminal.print
 
         self.terminal.recording = True
@@ -1142,10 +1083,152 @@ class TestPager(TestCase):
         self.eq(len(pager.display), 5)
 
         self.eq(self.terminal.recording, [
+            '\rline0lin\033[K\n',
+            '\rline1lin\033[K\n',
             '\rline2lin\033[K\n',
             '\rline3lin\033[K\n',
-            '\rline4lin\033[K\n',
-            '\rline5lin\033[K\n',
-            '\rline6lin\033[K',
+            '\rline4lin\033[K',
             ])
         self.terminal.recording = False
+
+    def test_header(self):
+        pager = self.get_small_terminal_wah_pager()
+        pager.render()
+
+        pager.header.append('header')
+
+        self.terminal.recording = True
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\r\033[4A',
+            '\rheader\033[K\n',
+            '\r哇 0\033[K\n',
+            '\r哇 1\033[K\n',
+            '\r哇 2\033[K\n',
+            '\r哇 3\033[K'])
+        self.terminal.recording = False
+
+    def test_footer(self):
+        pager = self.get_small_terminal_wah_pager()
+        pager.render()
+
+        pager.footer.append('footer')
+
+        self.terminal.recording = True
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\rfooter\033[K'])
+        self.terminal.recording = False
+
+    def test_header_and_footer(self):
+        pager = self.get_small_terminal_wah_pager()
+        pager.render()
+
+        pager.header.append('header')
+        pager.footer.append('footer')
+
+        self.terminal.recording = True
+
+        # scroll down 1 line to test partial update
+        pager.scroll += 1
+
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\r\033[4A',
+            '\rheader\033[K\n',
+            '\r\033[3B',
+            '\rfooter\033[K'])
+        self.terminal.recording = False
+
+    def test_flex(self):
+        pager = self.get_small_terminal_wah_pager(flex=True, max_height=5)
+        self.true(pager.flex)
+        self.eq(pager.height, 5)
+        self.eq(pager.max_height, 5)
+
+        pager.clear()
+        self.eq(pager.height, 5)
+
+        pager.append('line0')
+        pager.append('line1')
+        pager.footer.append('footer')
+
+        self.terminal.recording = True
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\rline0\033[K\n',
+            '\rline1\033[K\n',
+            '\r\033[K\n',
+            '\r\033[K\n',
+            '\rfooter\033[K'])
+        self.terminal.recording = False
+
+    def test_thick_header_and_footer(self):
+        pager = self.get_small_terminal_wah_pager()
+
+        pager.header.extend(['header' + str(i) for i in range(5)])
+        pager.footer.extend(['footer' + str(i) for i in range(5)])
+
+        # Both header and footer are guarenteed to print at least one line
+        # header has higher priority
+        pager.render()
+        self.eq(pager.preview, (
+            'header0',
+            'header1',
+            'header2',
+            'header3',
+            'footer0',
+            ))
+
+        # footer fills the remaining space
+        pager.header.clear()
+        pager.header.extend(['header0', 'header1'])
+        self.eq(pager.preview, (
+            'header0',
+            'header1',
+            'footer0',
+            'footer1',
+            'footer2',
+            ))
+
+        # footer fills all the space
+        pager.header.clear()
+        self.eq(pager.preview, (
+            'footer0',
+            'footer1',
+            'footer2',
+            'footer3',
+            'footer4',
+            ))
+
+        # body starts to have space to print
+        pager.header.append('header0')
+        pager.footer.pop(0)
+        pager.footer.pop(0)
+        pager.footer.pop(0)
+        self.eq(pager.preview, (
+            'header0',
+            '哇 0',
+            '哇 1',
+            'footer3',
+            'footer4',
+            ))
+
+        pager.header.append('header1')
+        self.eq(pager.preview, (
+            'header0',
+            'header1',
+            '哇 0',
+            'footer3',
+            'footer4',
+            ))
+
+        pager.header.pop(0)
+        pager.footer.pop(0)
+        self.eq(pager.preview, (
+            'header1',
+            '哇 0',
+            '哇 1',
+            '哇 2',
+            'footer4',
+            ))

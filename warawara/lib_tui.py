@@ -654,7 +654,7 @@ class Pager:
 
         import builtins
         self.print = builtins.print
-        self.display = []
+        self._display = []
 
     @property
     def term_size(self):
@@ -691,6 +691,7 @@ class Pager:
             content_total_height = self.max_height
         else:
             content_total_height = len(self.header) + len(self.body) + len(self.footer)
+
         return min(
                 self.max_height or self.term_height,
                 self.term_height,
@@ -731,57 +732,74 @@ class Pager:
         self.body[idx] = line
 
     @property
-    def lines(self):
-        avail_space = self.height
+    def data(self):
+        alloc = [0, 0, 0]
+
+        for i in range(self.height):
+            if not self.header.empty and alloc[0] == 0:
+                probe = 0
+            elif not self.footer.empty and alloc[2] == 0:
+                probe = 2
+            elif alloc[0] < len(self.header):
+                probe = 0
+            elif alloc[2] < len(self.footer):
+                probe = 2
+            else:
+                probe = 1
+
+            alloc[probe] += 1
+
         occu_lines = 0
 
         for idx, line in enumerate(self.header.lines):
             pagee = Pagee(text=line,
                         section='header',
                         offset=idx,
-                        visible=avail_space > (idx > 0 and not self.footer.empty),)
+                        visible=alloc[0] > 0,)
             yield pagee
             if pagee.visible:
-                avail_space -= 1
+                alloc[0] -= 1
                 occu_lines += 1
 
-        for idx, line in enumerate(self.body.lines):
-            pagee = Pagee(text=line,
-                        section='body',
-                        offset=len(self.header) + idx,
-                        visible=idx >= self.scroll and avail_space > (not self.footer.empty),)
-            yield pagee
-            if pagee.visible:
-                avail_space -= 1
-                occu_lines += 1
+        for idx, line in enumerate(self.body.lines + [''] * (alloc[1] - len(self.body))):
+            if idx < len(self.body):
+                section = 'body'
+            else:
+                section = 'padding'
 
-        for idx, line in enumerate([''] * (avail_space - len(self.footer.lines)),
-                             start=len(self.body.lines)):
             pagee = Pagee(text=line,
-                        section='padding',
+                        section=section,
                         offset=len(self.header) + idx,
-                        visible=idx >= self.scroll and avail_space > (not self.footer.empty),)
+                        visible=idx >= self.scroll and alloc[1] > 0,)
             yield pagee
             if pagee.visible:
-                avail_space -= 1
+                alloc[1] -= 1
                 occu_lines += 1
 
         for idx, line in enumerate(self.footer.lines):
             yield Pagee(text=line,
                         section='footer',
                         offset=occu_lines + idx,
-                        visible=avail_space > 0,)
-            avail_space -= 1
+                        visible=alloc[2] > 0,)
+            alloc[2] -= 1
 
     @property
-    def visible(self):
-        for line in self.lines:
-            if line.visible:
-                yield line
+    def lines(self):
+        return tuple(item.text for item in self.data)
+
+    @property
+    def preview(self):
+        return tuple(item.text for item in self.data if item.visible)
+
+    @property
+    def display(self):
+        return tuple(self._display)
 
     @property
     def empty(self):
-        return not self.lines
+        for line in self.lines:
+            return False
+        return True
 
     def append(self, line=''):
         self.body.append(line)
@@ -808,7 +826,10 @@ class Pager:
 
     @scroll.setter
     def scroll(self, value):
-        self._scroll = value
+        if value == '$':
+            self._scroll = len(self.body)
+        else:
+            self._scroll = value
 
         content_height = max(0, self.height - len(self.header) - len(self.footer))
         from .lib_math import clamp
@@ -816,36 +837,41 @@ class Pager:
 
     def render(self, *, all=None):
         # Skip out-of-screen lines, i.e. canvas size-- if terminal size--
-        self.display = self.display[-self.term_height:] or [None]
+        self._display = self._display[-self.term_height:] or [None]
 
-        visible_lines = list(self.visible)
+        visible_lines = list(self.preview)
 
-        cursor = len(self.display) - 1
+        cursor = len(self._display) - 1
 
         for i in range(cursor, max(len(visible_lines) - 1, 0), -1):
             self.print('\r\033[K\033[A', end='')
-            self.display.pop()
+            self._display.pop()
             cursor -= 1
+
+        if not visible_lines:
+            self.print('\r\033[K', end='')
+            self._display.pop()
+            return
 
         # Assumed that cursor is always at the end of last line
         from .lib_itertools import lookahead
         for (idx, line), is_last in lookahead(enumerate(visible_lines)):
             # Append empty lines, i.e. canvas size++ if terminal size++
-            for i in range(len(self.display), idx + 1):
-                self.display.append(None)
+            for i in range(len(self._display), idx + 1):
+                self._display.append(None)
 
             # Skip non-dirty lines, but always redraw the last line
             # for keeping cursor at end of the last line
-            if not all and not is_last and self.display[idx] == line:
+            if not all and not is_last and self._display[idx] == line:
                 continue
 
             # Align cursor position
             if cursor != idx:
-                dist = min(abs(cursor - idx), len(self.display) - 1)
+                dist = min(abs(cursor - idx), len(self._display) - 1)
                 self.print('\r\033[{}{}'.format(dist, 'A' if cursor > idx else 'B'), end='')
 
-            wline = wrap(line.text, self.width)[0]
-            self.display[idx] = wline
+            wline = wrap(line, self.width)[0]
+            self._display[idx] = wline
 
             # Print content onto screen
             self.print('\r{}\033[K'.format(wline),
