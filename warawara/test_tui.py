@@ -1067,8 +1067,13 @@ class TestPager(TestCase):
         self.eq(self.terminal.width, 80)
         self.eq(self.terminal.height, 24)
 
-        pager = Pager(max_height=5, max_width=8)
+        pager = Pager()
+        pager.max_height = 5
+        pager.max_width = 8
         pager.print = self.terminal.print
+
+        self.lt(pager.max_height, self.terminal.height)
+        self.lt(pager.max_width, self.terminal.width)
 
         self.terminal.recording = True
         pager[0] = 'line0line0'
