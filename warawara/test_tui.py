@@ -1232,3 +1232,7 @@ class TestPager(TestCase):
             '哇 2',
             'footer4',
             ))
+
+        self.eq(list(pager.header), ['header1'])
+        self.eq(list(pager), ['哇 0', '哇 1', '哇 2', '哇 3', '哇 4', '哇 5', '哇 6', '哇 7', '哇 8', '哇 9'])
+        self.eq(list(pager.footer), ['footer4'])
