@@ -1023,6 +1023,16 @@ class TestPager(TestCase):
             '\r哇 6 (ne\033[K'])
         self.terminal.recording = False
 
+        # Scroll to end
+        pager.scroll = '$'
+        self.eq(pager.preview, (
+            '哇 5',
+            '哇 6 (new)',
+            '哇 7',
+            '哇 8',
+            '哇 9',
+            ))
+
     def test_clear(self):
         pager = self.get_small_terminal_wah_pager()
         pager.render()
