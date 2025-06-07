@@ -4,9 +4,7 @@ export, __all__ = exporter()
 
 @export
 class namedlist(list):
-    def __init__(self, values):
-        super().__init__(values)
-
+    def __init__(self, *args, **kwargs):
         super().__setattr__('_name_to_index', {})
         super().__setattr__('_index_to_name', {})
 
@@ -16,6 +14,17 @@ class namedlist(list):
             return self._name_to_index.get(name)
         indexof.__dict__ = self._name_to_index
         super().__setattr__('indexof', indexof)
+
+        if args and kwargs:
+            raise ValueError('Cannot mix named and unnamed values')
+
+        if args:
+            super().__init__(args[0])
+
+        if kwargs:
+            for idx, (key, value) in enumerate(kwargs.items()):
+                self.append(value)
+                self.nameit(idx, key)
 
     def nameof(self, index):
         if isinstance(index, str):

@@ -13,6 +13,18 @@ class TestNamedList(TestCase):
         self.eq(self.nl, [10, 11, 12, 13])
         self.eq(len(self.nl), 4)
 
+    def test_init_with_kwargs(self):
+        nl = namedlist(apple=10, banana=11, canana=12, danana=13)
+        self.eq(nl, self.nl)
+
+        self.eq(nl.indexof('apple'), 0)
+        self.eq(nl.indexof('banana'), 1)
+        self.eq(nl.indexof('canana'), 2)
+        self.eq(nl.indexof('danana'), 3)
+
+        with self.raises(ValueError):
+            namedlist([1, 2, 3], apple=10)
+
     def test_unname(self):
         self.eq(self.nl.canana, 12)
         self.eq(self.nl.indexof.canana, 2)
