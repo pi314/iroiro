@@ -1162,21 +1162,26 @@ class TestPager(TestCase):
         self.eq(pager.max_height, 5)
 
         pager.clear()
+        self.eq(pager.preview, (
+            '',
+            '',
+            '',
+            '',
+            '',
+            ))
         self.eq(pager.height, 5)
 
         pager.append('line0')
         pager.append('line1')
         pager.footer.append('footer')
 
-        self.terminal.recording = True
-        pager.render()
-        self.eq(self.terminal.recording, [
-            '\rline0\033[K\n',
-            '\rline1\033[K\n',
-            '\r\033[K\n',
-            '\r\033[K\n',
-            '\rfooter\033[K'])
-        self.terminal.recording = False
+        self.eq(pager.preview, (
+            'line0',
+            'line1',
+            '',
+            '',
+            'footer'
+            ))
 
     def test_thick_header_and_footer(self):
         pager = self.get_small_terminal_wah_pager()
