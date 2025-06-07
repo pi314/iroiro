@@ -700,10 +700,7 @@ class Pager:
 
     @property
     def width(self):
-        return min(
-                self.max_width or self.term_width,
-                self.term_width,
-                )
+        return min(self.max_width or self.term_width, self.term_width)
 
     def __len__(self):
         return len(self.body)
@@ -733,74 +730,41 @@ class Pager:
 
     @property
     def data(self):
-        # header, body, padding, footer
-        alloc = [0, 0, 0, 0]
+        from .lib_collections import namedlist
+        alloc = namedlist(header=0, body=0, padding=0, footer=0)
 
         for i in range(self.height):
-            if not self.header.empty and alloc[0] == 0:
-                probe = 0
-            elif not self.footer.empty and alloc[3] == 0:
-                probe = 3
-            elif alloc[0] < len(self.header):
-                probe = 0
-            elif alloc[3] < len(self.footer):
-                probe = 3
-            elif alloc[1] < len(self.body):
-                probe = 1
+            if not self.header.empty and alloc.header == 0:
+                section = 'header'
+            elif not self.footer.empty and alloc.footer == 0:
+                section = 'footer'
+            elif alloc.header < len(self.header):
+                section = 'header'
+            elif alloc.footer < len(self.footer):
+                section = 'footer'
+            elif alloc.body < len(self.body):
+                section = 'body'
             else:
-                probe = 2
+                section = 'padding'
 
-            alloc[probe] += 1
+            alloc[section] += 1
 
-        occu_lines = 0
-
-        for probe, section, lines, base in [
-                (0, 'header', self.header.lines, 0),
-                (1, 'body', self.body.lines, len(self.header) - self.scroll),
-                (2, 'padding', [''] * alloc[2], alloc[0] + alloc[1]),
-                (3, 'footer', self.footer.lines, sum(alloc[0:3])),
+        at_line = 0
+        for section, lines, base in [
+                ('header',  self.header.lines,    0),
+                ('body',    self.body.lines,      len(self.header) - self.scroll),
+                ('padding', [''] * alloc.padding, alloc.header + alloc.body),
+                ('footer',  self.footer.lines,    alloc.header + alloc.body + alloc.padding),
                 ]:
             for idx, line in enumerate(lines):
                 pagee = Pagee(text=line,
                             section=section,
                             offset=idx + base,
-                            visible=idx + base >= occu_lines and alloc[probe] > 0,)
+                            visible=idx + base >= at_line and getattr(alloc, section) > 0,)
                 yield pagee
                 if pagee.visible:
-                    alloc[probe] -= 1
-                    occu_lines += 1
-
-        # for idx, line in enumerate(self.header.lines):
-        #     pagee = Pagee(text=line,
-        #                 section='header',
-        #                 offset=idx,
-        #                 visible=alloc[0] > 0,)
-        #     yield pagee
-        #     if pagee.visible:
-        #         alloc[0] -= 1
-        #         occu_lines += 1
-        #
-        # for idx, line in enumerate(self.body.lines + [''] * (alloc[1] - len(self.body))):
-        #     if idx < len(self.body):
-        #         section = 'body'
-        #     else:
-        #         section = 'padding'
-        #
-        #     pagee = Pagee(text=line,
-        #                 section=section,
-        #                 offset=len(self.header) - self.scroll + idx,
-        #                 visible=idx >= self.scroll and alloc[1] > 0,)
-        #     yield pagee
-        #     if pagee.visible:
-        #         alloc[1] -= 1
-        #         occu_lines += 1
-        #
-        # for idx, line in enumerate(self.footer.lines):
-        #     yield Pagee(text=line,
-        #                 section='footer',
-        #                 offset=occu_lines + idx,
-        #                 visible=alloc[2] > 0,)
-        #     alloc[2] -= 1
+                    alloc[section] -= 1
+                    at_line += 1
 
     @property
     def lines(self):
