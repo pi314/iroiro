@@ -730,8 +730,8 @@ class Pager:
 
     @property
     def data(self):
-        from .lib_collections import namedlist
-        alloc = namedlist(header=0, body=0, padding=0, footer=0)
+        from .lib_collections import namablelist
+        alloc = namablelist(header=0, body=0, padding=0, footer=0)
 
         for i in range(self.height):
             if not self.header.empty and alloc.header == 0:

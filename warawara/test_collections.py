@@ -1,11 +1,11 @@
 from .lib_test_utils import *
 
-from .lib_collections import namedlist
+from .lib_collections import namablelist
 
 
-class TestNamedList(TestCase):
+class TestNamableList(TestCase):
     def setUp(self):
-        self.nl = namedlist([10, 11, 12, 13])
+        self.nl = namablelist([10, 11, 12, 13])
         self.nl.nameit(0, 'apple')
         self.nl.nameit(1, 'banana')
         self.nl.nameit(2, 'canana')
@@ -14,7 +14,7 @@ class TestNamedList(TestCase):
         self.eq(len(self.nl), 4)
 
     def test_init_with_kwargs(self):
-        nl = namedlist(apple=10, banana=11, canana=12, danana=13)
+        nl = namablelist(apple=10, banana=11, canana=12, danana=13)
         self.eq(nl, self.nl)
 
         self.eq(nl.indexof('apple'), 0)
@@ -23,7 +23,7 @@ class TestNamedList(TestCase):
         self.eq(nl.indexof('danana'), 3)
 
         with self.raises(ValueError):
-            namedlist([1, 2, 3], apple=10)
+            namablelist([1, 2, 3], apple=10)
 
     def test_unname(self):
         self.eq(self.nl.canana, 12)

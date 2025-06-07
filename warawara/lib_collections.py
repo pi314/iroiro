@@ -3,7 +3,7 @@ export, __all__ = exporter()
 
 
 @export
-class namedlist(list):
+class namablelist(list):
     def __init__(self, *args, **kwargs):
         super().__setattr__('_name_to_index', {})
         super().__setattr__('_index_to_name', {})
