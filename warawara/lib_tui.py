@@ -867,13 +867,64 @@ class Pager:
 @export
 class Menu:
     def __init__(self, title, options, *,
-                 format=None, arrow='>', type=None, onkey=None, wrap=False):
-        self.pager = Pager(max_height=5, flex=True)
+                 max_height=None,
+                 format=None, cursor='>', type=None, onkey=None, wrap=False):
+        self.pager = Pager(max_height=max_height)
+
         self.title = title
-        self.options = options
+        self.options = [str(opt) for opt in options]
         self.message = ''
 
-        self.idx = 0
+        self.format = '{cursor} {option}'
+
+        self.onkey = MenuKeyHandler(self)
+        self.onkey += onkey
+
+        self._cursor = MenuCursor(self, symbol=cursor, wrap=wrap)
+
+    '''
+    > Option1
+      Option2
+
+    > Option1 <
+      Option2
+
+    > [ ] option1
+      [ ] option2
+      { } all
+
+      (*) option1
+    > ( ) option2
+      { } clear
+    '''
+
+    def __len__(self):
+        return len(self.options)
+
+    @property
+    def wrap(self):
+        return self.cursor.wrap
+
+    @wrap.setter
+    def wrap(self, value):
+        self.cursor.wrap = value
+
+    @property
+    def max_height(self):
+        return self.pager.max_height
+
+    @max_height.setter
+    def max_height(self, value):
+        self.pager.max_height = value
+
+    @property
+    def cursor(self):
+        return self._cursor
+
+    @cursor.setter
+    def cursor(self, value):
+        # self._cursor = value
+        ...
 
     def render(self):
         self.pager.clear()
@@ -882,7 +933,13 @@ class Menu:
             self.pager.header.extend(self.title.split('\n'))
 
         for idx, opt in enumerate(self.options):
-            self.pager[idx] = ('  ' if idx != self.idx else '> ') + opt
+            if idx != self.cursor:
+                cursor = strwidth(str(self.cursor)) * ' '
+            else:
+                cursor = self.cursor
+            self.pager[idx] = self.format.format(
+                    cursor=cursor,
+                    option=opt)
 
         self.pager.footer.append(self.message)
 
@@ -894,22 +951,25 @@ class Menu:
 
         def pager_info():
             self.message = 'cursor={} visible={} scroll={} height={}'.format(
-                    self.idx, self.pager[self.idx].visible, self.pager.scroll, self.pager.height)
+                    repr(self.cursor), self.pager[int(self.cursor)].visible, self.pager.scroll, self.pager.height)
 
         while True:
             self.render()
             ch = getch(capture='fs')
 
             if ch in ('up', 'k'):
-                self.idx = (self.idx + len(self.options) - 1) % len(self.options)
+                self.cursor -= 1
                 pager_info()
             elif ch in ('down', 'j'):
-                self.idx = (self.idx + 1) % len(self.options)
+                self.cursor += 1
                 pager_info()
             elif ch in ('q', 'ctrl+c', KEY_FS):
                 self.message = repr(ch)
                 self.render()
                 break
+            elif ch == 'w':
+                self.wrap = not self.wrap
+                pager_info()
             elif ch == 't':
                 if self.title == 'new title':
                     self.title = 'new multiline\ntitle'
@@ -944,3 +1004,90 @@ class Menu:
                 self.message = repr(ch)
 
         print()
+
+
+class MenuKeyHandler:
+    def __init__(self, menu):
+        self.menu = menu
+        self.handlers = []
+
+    def __iadd__(self, handler):
+        self.handlers.append(handler)
+        return self
+
+    def __isub__(self, handler):
+        self.handlers.remove(handler)
+        return self
+
+    def __call__(self, key):
+        ...
+
+
+class MenuItem:
+    def __init__(self, menu, text):
+        self.menu = menu
+        self.text = text
+        self.meta = False
+
+    def __eq__(self, other):
+        return False
+
+
+class MenuCursor:
+    def __init__(self, menu, *, symbol=None, wrap=False):
+        self.menu = menu
+        self.symbol = symbol
+        self.wrap = wrap
+        self.at = 0
+
+    def __repr__(self):
+        return f'MenuCursor(at={self.at}, wrap={self.wrap})'
+
+    def __str__(self):
+        return self.symbol
+
+    def __int__(self):
+        return self.at
+
+    def __add__(self, other):
+        return self.whatis(self.at + other)
+
+    def __radd__(self, other):
+        return self + other
+
+    def __iadd__(self, other):
+        self.at = self + other
+        return self
+
+    def __sub__(self, other):
+        return self.whatis(self.at - other)
+
+    def __rsub__(self, other):
+        return other - self.at
+
+    def __isub__(self, other):
+        self.at = self - other
+        return self
+
+    def __eq__(self, other):
+        try:
+            if isinstance(other, int):
+                return self.at == other
+        except TypeError:
+            pass
+
+        if isinstance(other, MenuItem):
+            ...
+
+        return False
+
+    def whatis(self, value):
+        N = len(self.menu)
+        if self.wrap:
+            return ((value % N) + N) % N
+        else:
+            from .lib_math import clamp
+            return clamp(0, value, N - 1)
+
+    def to(self, value):
+        self.at = self.whatis(value)
