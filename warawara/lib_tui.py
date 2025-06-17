@@ -866,22 +866,6 @@ class Pager:
 
 @export
 class Menu:
-    def __init__(self, title, options, *,
-                 max_height=None,
-                 format=None, cursor='>', type=None, onkey=None, wrap=False):
-        self.pager = Pager(max_height=max_height)
-
-        self.title = title
-        self.options = [str(opt) for opt in options]
-        self.message = ''
-
-        self.format = '{cursor} {option}'
-
-        self.onkey = MenuKeyHandler(self)
-        self.onkey += onkey
-
-        self._cursor = MenuCursor(self, symbol=cursor, wrap=wrap)
-
     '''
     > Option1
       Option2
@@ -897,6 +881,29 @@ class Menu:
     > ( ) option2
       { } clear
     '''
+
+    class DoneSelection(Exception):
+        pass
+
+    class GiveUpSelection(Exception):
+        pass
+
+    def __init__(self, title, options, *,
+                 max_height=None,
+                 format=None, cursor='>', type=None, onkey=None, wrap=False):
+        self.pager = Pager(max_height=max_height)
+
+        self.title = title
+        self.options = [str(opt) for opt in options]
+        self.message = ''
+
+        self.format = '{cursor} {option}'
+
+        self._onkey = MenuKeyHandler(self)
+        if onkey:
+            self._onkey += onkey
+
+        self._cursor = MenuCursor(self, symbol=cursor, wrap=wrap)
 
     def __len__(self):
         return len(self.options)
@@ -923,8 +930,22 @@ class Menu:
 
     @cursor.setter
     def cursor(self, value):
-        # self._cursor = value
-        ...
+        self._cursor.to(value)
+
+    @property
+    def onkey(self):
+        return self._onkey
+
+    @onkey.setter
+    def onkey(self, value):
+        self._onkey.clear()
+        self._onkey += value
+
+    def done(self):
+        raise Menu.DoneSelection()
+
+    def quit(self):
+        raise Menu.GiveUpSelection()
 
     def render(self):
         self.pager.clear()
@@ -946,62 +967,20 @@ class Menu:
         self.pager.render()
 
     def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
-        # with HijackStdio():
-            # with ExceptionSuppressor(suppress):
+        with HijackStdio():
+            with ExceptionSuppressor(suppress):
+                while True:
+                    self.render()
+                    ch = getch(capture='fs')
 
-        def pager_info():
-            self.message = 'cursor={} visible={} scroll={} height={}'.format(
-                    repr(self.cursor), self.pager[int(self.cursor)].visible, self.pager.scroll, self.pager.height)
+                    self.message = repr(ch)
 
-        while True:
-            self.render()
-            ch = getch(capture='fs')
-
-            if ch in ('up', 'k'):
-                self.cursor -= 1
-                pager_info()
-            elif ch in ('down', 'j'):
-                self.cursor += 1
-                pager_info()
-            elif ch in ('q', 'ctrl+c', KEY_FS):
-                self.message = repr(ch)
-                self.render()
-                break
-            elif ch == 'w':
-                self.wrap = not self.wrap
-                pager_info()
-            elif ch == 't':
-                if self.title == 'new title':
-                    self.title = 'new multiline\ntitle'
-                elif self.title:
-                    self.title = None
-                else:
-                    self.title = 'new title'
-            elif ch == 's':
-                self.message = 'scroll=' + str(self.pager.scroll)
-            elif ch == 'ctrl-e':
-                self.pager.scroll += 1
-                pager_info()
-            elif ch == 'ctrl-y':
-                self.pager.scroll -= 1
-                pager_info()
-            elif ch == '-':
-                if not self.pager.max_height:
-                    self.pager.max_height = self.pager.height - 1
-                else:
-                    self.pager.max_height -= 1
-                pager_info()
-            elif ch == '+':
-                if not self.pager.max_height:
-                    self.pager.max_height = self.pager.height + 1
-                else:
-                    self.pager.max_height += 1
-                pager_info()
-            elif ch == '=':
-                self.pager.max_height = None
-                pager_info()
-            else:
-                self.message = repr(ch)
+                    try:
+                        self.onkey.handle(ch)
+                    except Menu.GiveUpSelection:
+                        break
+                    except Menu.DoneSelection:
+                        break
 
         print()
 
@@ -1009,18 +988,66 @@ class Menu:
 class MenuKeyHandler:
     def __init__(self, menu):
         self.menu = menu
-        self.handlers = []
+        self.clear()
+
+    def clear(self):
+        self.handlers = {None: []}
 
     def __iadd__(self, handler):
-        self.handlers.append(handler)
-        return self
+        return self.bind(handler)
 
     def __isub__(self, handler):
-        self.handlers.remove(handler)
+        return self.unbind(handler)
+
+    def __call__(self, key, handler=False):
+        return self.bind(key, handler)
+
+    def bind(self, key, handler=False):
+        if callable(key) and handler is False:
+            key, handler = None, key
+
+        if not callable(handler):
+            raise TypeError('handler should be callable')
+
+        if key not in self.handlers:
+            self.handlers[key] = []
+
+        if handler not in self.handlers[key]:
+            self.handlers[key].append(handler)
+
         return self
 
-    def __call__(self, key):
-        ...
+    def unbind(self, key, handler=False):
+        if callable(key) and handler is False:
+            key_list, handler = self.handlers.keys(), key
+        else:
+            key_list = [key]
+
+        for key in key_list:
+            try:
+                if handler is False:
+                    self.handlers.pop(key)
+                else:
+                    self.handlers[key].remove(handler)
+            except (KeyError, ValueError):
+                pass
+
+        return self
+
+    def handle(self, key):
+        remaps = {key}
+        k = key
+        while True:
+            for handler in self.handlers[None] + self.handlers.get(key, []):
+                ret = handler(menu=self.menu, key=k)
+                if isinstance(ret, Key) and ret not in remaps:
+                    k = ret
+                    remaps.add(k)
+                    break
+                if ret is not None:
+                    return ret
+            else:
+                break
 
 
 class MenuItem:
@@ -1082,6 +1109,7 @@ class MenuCursor:
         return False
 
     def whatis(self, value):
+        value = int(value)
         N = len(self.menu)
         if self.wrap:
             return ((value % N) + N) % N
