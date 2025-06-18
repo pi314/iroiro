@@ -941,11 +941,41 @@ class Menu:
         self._onkey.clear()
         self._onkey += value
 
-    def done(self):
+    def done(self, **kwargs):
         raise Menu.DoneSelection()
 
-    def quit(self):
+    def quit(self, **kwargs):
         raise Menu.GiveUpSelection()
+
+    def chase_cursor(self):
+        if self.pager[int(self.cursor)].visible:
+            return
+
+        if self.cursor < self.pager.scroll:
+            self.pager.scroll = int(self.cursor)
+            return
+
+        for i in range(int(self.cursor), 0, -1):
+            if self.pager[i].visible:
+                self.pager.scroll += int(self.cursor) - i
+                break
+
+    def call_cursor(self):
+        if self.pager[int(self.cursor)].visible:
+            return
+
+        if self.cursor < self.pager.scroll:
+            self.cursor = self.pager.scroll
+            return
+
+        for i in range(int(self.cursor), 0, -1):
+            if self.pager[i].visible:
+                self.cursor = i
+                break
+
+    def scroll(self, count=1):
+        self.pager.scroll += count
+        self.call_cursor()
 
     def render(self):
         self.pager.clear()
@@ -1038,8 +1068,12 @@ class MenuKeyHandler:
         remaps = {key}
         k = key
         while True:
-            for handler in self.handlers[None] + self.handlers.get(key, []):
-                ret = handler(menu=self.menu, key=k)
+            for handler in self.handlers.get(k, []) + self.handlers[None]:
+                try:
+                    ret = handler(menu=self.menu, key=k)
+                except TypeError:
+                    ret = handler()
+
                 if isinstance(ret, Key) and ret not in remaps:
                     k = ret
                     remaps.add(k)
@@ -1083,7 +1117,7 @@ class MenuCursor:
         return self + other
 
     def __iadd__(self, other):
-        self.at = self + other
+        self.to(self + other)
         return self
 
     def __sub__(self, other):
@@ -1093,8 +1127,14 @@ class MenuCursor:
         return other - self.at
 
     def __isub__(self, other):
-        self.at = self - other
+        self.to(self - other)
         return self
+
+    def __lt__(self, other):
+        return self.at < other
+
+    def __gt__(self, other):
+        return self.at > other
 
     def __eq__(self, other):
         try:
@@ -1109,6 +1149,9 @@ class MenuCursor:
         return False
 
     def whatis(self, value):
+        if value == '$':
+            return len(self.menu) - 1
+
         value = int(value)
         N = len(self.menu)
         if self.wrap:
@@ -1119,3 +1162,10 @@ class MenuCursor:
 
     def to(self, value):
         self.at = self.whatis(value)
+        self.menu.chase_cursor()
+
+    def up(self, count=1):
+        self -= 1
+
+    def down(self, count=1):
+        self += 1

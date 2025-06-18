@@ -14,14 +14,14 @@ def main():
             return warawara.KEY_UP
         elif key == 'j':
             return warawara.KEY_DOWN
-        elif key == 'ctrl-e':
-            menu.pager.scroll += 1
-            if not menu.pager[int(menu.cursor)].visible:
-                menu.cursor += 1
         elif key == 'ctrl-y':
-            menu.pager.scroll -= 1
-            if not menu.pager[int(menu.cursor)].visible:
-                menu.cursor -= 1
+            menu.scroll(-1)
+        elif key == 'ctrl-e':
+            menu.scroll(1)
+        elif key == 'g':
+            menu.cursor = 0
+        elif key == 'G':
+            menu.cursor = '$'
         pager_info(key)
 
     def onkey_resize(menu, key):
@@ -41,23 +41,7 @@ def main():
 
     def onkey(menu, key):
         unknown_key = False
-        if key == 'up':
-            menu.cursor -= 1
-            if not menu.pager[int(menu.cursor)].visible:
-                menu.pager.scroll -= 1
-                if not menu.pager[int(menu.cursor)].visible:
-                    menu.pager.scroll = '$'
-        elif key == 'down':
-            menu.cursor += 1
-            if not menu.pager[int(menu.cursor)].visible:
-                menu.pager.scroll += 1
-                if not menu.pager[int(menu.cursor)].visible:
-                    menu.pager.scroll = 0
-        elif key in ('q', 'ctrl+c', warawara.KEY_FS):
-            menu.message = repr(key)
-            menu.render()
-            menu.quit()
-        elif key == 'w':
+        if key == 'w':
             menu.wrap = not menu.wrap
         elif key == 't':
             if menu.title == 'new title':
@@ -76,9 +60,12 @@ def main():
         else:
             menu.message = repr(key)
 
+    menu.onkey(warawara.KEY_UP, menu.cursor.up)
+    menu.onkey(warawara.KEY_DOWN, menu.cursor.down)
     menu.onkey(onkey)
     menu.onkey(onkey_vim)
     menu.onkey(onkey_resize)
+    menu.onkey('q', menu.quit)
     ret = menu.interact()
     print(ret)
 
