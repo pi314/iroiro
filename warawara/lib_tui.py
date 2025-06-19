@@ -452,17 +452,17 @@ _export_all_keys()
 del _export_all_keys
 
 
-key_table = {}
-key_table_reverse = {}
+key_seq_table = {}
+key_alias_table = {}
 
 def _init_key_table():
     for k, v in globals().items():
         if not k.startswith('KEY_'):
             continue
-        key_table[v.seq] = v
+        key_seq_table[v.seq] = v
 
         for alias in v.aliases:
-            key_table_reverse[alias] = v
+            key_alias_table[alias] = v
 
 _init_key_table()
 del _init_key_table
@@ -481,11 +481,11 @@ def register_key(seq, *aliases):
     if not seq:
         raise ValueError('huh?')
 
-    if seq not in key_table:
-        key_table[seq] = Key(seq, *aliases)
-        return key_table[seq]
+    if seq not in key_seq_table:
+        key_seq_table[seq] = Key(seq, *aliases)
+        return key_seq_table[seq]
 
-    key = key_table[seq]
+    key = key_seq_table[seq]
     for name in aliases:
         key.nameit(name)
 
@@ -498,7 +498,11 @@ def deregister_key(seq):
         seq = seq.seq
     elif isinstance(seq, str):
         seq = seq.encode('utf8')
-    return key_table.pop(seq, None)
+
+    key = key_seq_table.pop(seq, None)
+    for alias in key.aliases:
+        key_alias_table.pop(alias)
+    return key
 
 
 @export
@@ -542,7 +546,7 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
             return None
 
         acc = b''
-        candidate_matches = set(key_table.keys())
+        candidate_matches = set(key_seq_table.keys())
         while True:
             acc += read_one_byte()
 
@@ -579,8 +583,8 @@ def getch(*, timeout=None, encoding='utf8', capture=('ctrl+c', 'ctrl+z', 'fs')):
             except UnicodeError:
                 continue
 
-        if acc in key_table:
-            return key_table[acc]
+        if acc in key_seq_table:
+            return key_seq_table[acc]
 
         try:
             return acc.decode(encoding)
@@ -809,7 +813,9 @@ class Pager:
 
     @scroll.setter
     def scroll(self, value):
-        if value == '$':
+        if value == 'home':
+            self._scroll = 0
+        elif value == 'end':
             self._scroll = len(self.body)
         else:
             self._scroll = value
@@ -1046,6 +1052,8 @@ class MenuKeyHandler:
             raise ValueError('No handlers to bind')
 
         for key in key_list:
+            key = key_alias_table.get(key, key)
+
             for handler in handler_list:
                 if key not in self.handlers:
                     self.handlers[key] = []
@@ -1060,8 +1068,11 @@ class MenuKeyHandler:
         handler_list = [arg for arg in args if callable(arg)]
 
         for key in key_list:
+            key = key_alias_table.get(key, key)
+
             if not handler_list:
                 self.handlers.pop(key)
+
             for handler in handler_list:
                 try:
                     self.handlers[key].remove(handler)
@@ -1072,17 +1083,17 @@ class MenuKeyHandler:
 
     def handle(self, key):
         remaps = {key}
-        k = key
+        key = key_alias_table.get(key, key)
         while True:
-            for handler in self.handlers.get(k, []) + self.handlers[None]:
+            for handler in self.handlers.get(key, []) + self.handlers[None]:
                 try:
-                    ret = handler(menu=self.menu, key=k)
+                    ret = handler(menu=self.menu, key=key)
                 except TypeError:
                     ret = handler()
 
                 if isinstance(ret, Key) and ret not in remaps:
-                    k = ret
-                    remaps.add(k)
+                    key = ret
+                    remaps.add(key)
                     break
                 if ret is not None:
                     return ret
@@ -1155,7 +1166,9 @@ class MenuCursor:
         return False
 
     def whatis(self, value):
-        if value == '$':
+        if value == 'home':
+            return 0
+        if value == 'end':
             return len(self.menu) - 1
 
         value = int(value)

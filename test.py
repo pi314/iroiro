@@ -19,9 +19,9 @@ def main():
         elif key == 'ctrl-e':
             menu.scroll(1)
         elif key == 'g':
-            menu.cursor = 0
+            menu.cursor = 'home'
         elif key == 'G':
-            menu.cursor = '$'
+            menu.cursor = 'end'
         pager_info(key)
 
     def onkey_resize(menu, key):
@@ -61,7 +61,7 @@ def main():
             menu.message = repr(key)
 
     menu.onkey(warawara.KEY_UP, menu.cursor.up)
-    menu.onkey(warawara.KEY_DOWN, menu.cursor.down)
+    menu.onkey('down', menu.cursor.down)
     menu.onkey(onkey, onkey_vim, onkey_resize)
     menu.onkey('q', menu.quit)
     ret = menu.interact()
