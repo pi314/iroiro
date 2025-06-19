@@ -62,9 +62,7 @@ def main():
 
     menu.onkey(warawara.KEY_UP, menu.cursor.up)
     menu.onkey(warawara.KEY_DOWN, menu.cursor.down)
-    menu.onkey(onkey)
-    menu.onkey(onkey_vim)
-    menu.onkey(onkey_resize)
+    menu.onkey(onkey, onkey_vim, onkey_resize)
     menu.onkey('q', menu.quit)
     ret = menu.interact()
     print(ret)

@@ -941,6 +941,12 @@ class Menu:
         self._onkey.clear()
         self._onkey += value
 
+    def bind(self, *args, **kwargs):
+        return self._onkey.bind(*args, **kwargs)
+
+    def unbind(self, *args, **kwargs):
+        return self._onkey.unbind(*args, **kwargs)
+
     def done(self, **kwargs):
         raise Menu.DoneSelection()
 
@@ -1029,38 +1035,38 @@ class MenuKeyHandler:
     def __isub__(self, handler):
         return self.unbind(handler)
 
-    def __call__(self, key, handler=False):
-        return self.bind(key, handler)
+    def __call__(self, *args):
+        return self.bind(*args)
 
-    def bind(self, key, handler=False):
-        if callable(key) and handler is False:
-            key, handler = None, key
+    def bind(self, *args):
+        key_list = [arg for arg in args if not callable(arg)] or [None]
+        handler_list = [arg for arg in args if callable(arg)]
 
-        if not callable(handler):
-            raise TypeError('handler should be callable')
+        if not handler_list:
+            raise ValueError('No handlers to bind')
 
-        if key not in self.handlers:
-            self.handlers[key] = []
+        for key in key_list:
+            for handler in handler_list:
+                if key not in self.handlers:
+                    self.handlers[key] = []
 
-        if handler not in self.handlers[key]:
-            self.handlers[key].append(handler)
+                if handler not in self.handlers[key]:
+                    self.handlers[key].append(handler)
 
         return self
 
-    def unbind(self, key, handler=False):
-        if callable(key) and handler is False:
-            key_list, handler = self.handlers.keys(), key
-        else:
-            key_list = [key]
+    def unbind(self, *args):
+        key_list = [arg for arg in args if not callable(arg)] or self.handlers.keys()
+        handler_list = [arg for arg in args if callable(arg)]
 
         for key in key_list:
-            try:
-                if handler is False:
-                    self.handlers.pop(key)
-                else:
+            if not handler_list:
+                self.handlers.pop(key)
+            for handler in handler_list:
+                try:
                     self.handlers[key].remove(handler)
-            except (KeyError, ValueError):
-                pass
+                except (KeyError, ValueError):
+                    pass
 
         return self
 
