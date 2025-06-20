@@ -900,10 +900,10 @@ class Menu:
         self.pager = Pager(max_height=max_height)
 
         self.title = title
-        self.options = [str(opt) for opt in options]
+        self.options = tuple(MenuItem(self, opt) for opt in options)
         self.message = ''
 
-        self.format = '{cursor} {option}'
+        self.format = '{cursor} {item.text}'
 
         self._onkey = MenuKeyHandler(self)
         if onkey:
@@ -913,6 +913,12 @@ class Menu:
 
     def __len__(self):
         return len(self.options)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, MenuCursor):
+            if idx.menu is self:
+                idx = int(idx)
+        return self.options[idx]
 
     @property
     def wrap(self):
@@ -972,7 +978,7 @@ class Menu:
                 self.pager.scroll += int(self.cursor) - i
                 break
 
-    def call_cursor(self):
+    def pull_cursor(self):
         if self.pager[int(self.cursor)].visible:
             return
 
@@ -987,7 +993,7 @@ class Menu:
 
     def scroll(self, count=1):
         self.pager.scroll += count
-        self.call_cursor()
+        self.pull_cursor()
 
     def render(self):
         self.pager.clear()
@@ -995,14 +1001,14 @@ class Menu:
         if self.title:
             self.pager.header.extend(self.title.split('\n'))
 
-        for idx, opt in enumerate(self.options):
+        for idx, item in enumerate(self.options):
             if idx != self.cursor:
                 cursor = strwidth(str(self.cursor)) * ' '
             else:
                 cursor = self.cursor
             self.pager[idx] = self.format.format(
                     cursor=cursor,
-                    option=opt)
+                    item=item)
 
         self.pager.footer.append(self.message)
 
@@ -1018,18 +1024,22 @@ class Menu:
                     self.message = repr(ch)
 
                     try:
-                        self.onkey.handle(ch)
+                        ret = self[self.cursor].onkey.handle(ch)
+                        if ret is None:
+                            self.onkey.handle(ch)
                     except Menu.GiveUpSelection:
+                        self.render()
                         break
                     except Menu.DoneSelection:
+                        self.render()
                         break
 
         print()
 
 
 class MenuKeyHandler:
-    def __init__(self, menu):
-        self.menu = menu
+    def __init__(self, parent):
+        self.parent = parent
         self.clear()
 
     def clear(self):
@@ -1087,7 +1097,12 @@ class MenuKeyHandler:
         while True:
             for handler in self.handlers.get(key, []) + self.handlers[None]:
                 try:
-                    ret = handler(menu=self.menu, key=key)
+                    param = {}
+                    if isinstance(self.parent, Menu):
+                        param['menu'] = self.parent
+                    elif isinstance(self.parent, MenuItem):
+                        param['item'] = self.parent
+                    ret = handler(key=key, **param)
                 except TypeError:
                     ret = handler()
 
@@ -1104,11 +1119,25 @@ class MenuKeyHandler:
 class MenuItem:
     def __init__(self, menu, text):
         self.menu = menu
-        self.text = text
+        self.text = str(text)
         self.meta = False
 
-    def __eq__(self, other):
-        return False
+        self._onkey = MenuKeyHandler(self)
+
+    @property
+    def onkey(self):
+        return self._onkey
+
+    @onkey.setter
+    def onkey(self, value):
+        self._onkey.clear()
+        self._onkey += value
+
+    def bind(self, *args, **kwargs):
+        return self._onkey.bind(*args, **kwargs)
+
+    def unbind(self, *args, **kwargs):
+        return self._onkey.unbind(*args, **kwargs)
 
 
 class MenuCursor:

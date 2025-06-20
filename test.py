@@ -64,6 +64,13 @@ def main():
     menu.onkey('down', menu.cursor.down)
     menu.onkey(onkey, onkey_vim, onkey_resize)
     menu.onkey('q', menu.quit)
+
+    def enter(item, key):
+        item.menu.message = 'enter'
+        item.menu.done()
+
+    menu[-1].onkey(warawara.KEY_ENTER, enter)
+
     ret = menu.interact()
     print(ret)
 
