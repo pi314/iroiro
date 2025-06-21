@@ -1024,7 +1024,7 @@ class TestPager(TestCase):
         self.terminal.recording = False
 
         # Scroll to end
-        pager.scroll = '$'
+        pager.scroll = pager.end
         self.eq(pager.preview, (
             '哇 5',
             '哇 6 (new)',

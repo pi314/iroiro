@@ -19,9 +19,13 @@ def main():
         elif key == 'ctrl-e':
             menu.scroll(1)
         elif key == 'g':
-            menu.cursor = 'home'
+            menu.cursor = menu.first
         elif key == 'G':
-            menu.cursor = 'end'
+            menu.cursor = menu.last
+        elif key == 'H':
+            menu.cursor = menu.top
+        elif key == 'L':
+            menu.cursor = menu.bottom
         pager_info(key)
 
     def onkey_resize(menu, key):
@@ -68,8 +72,14 @@ def main():
     def enter(item, key):
         item.menu.message = 'enter'
         item.menu.done()
-
     menu[-1].onkey(warawara.KEY_ENTER, enter)
+
+    def index(item, key):
+        if key == 'i':
+            menu.message = f'index={item.index}'
+            return False
+    for item in menu:
+        item.onkey('i', index)
 
     ret = menu.interact()
     print(ret)

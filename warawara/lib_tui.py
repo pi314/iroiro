@@ -807,18 +807,21 @@ class Pager:
         self.footer.clear()
 
     @property
+    def home(self):
+        return 0
+
+    @property
+    def end(self):
+        return len(self.body) - 1
+
+    @property
     def scroll(self):
         self.scroll = self._scroll
         return self._scroll
 
     @scroll.setter
     def scroll(self, value):
-        if value == 'home':
-            self._scroll = 0
-        elif value == 'end':
-            self._scroll = len(self.body)
-        else:
-            self._scroll = value
+        self._scroll = value
 
         content_height = max(0, self.height - len(self.header) - len(self.footer))
         from .lib_math import clamp
@@ -952,6 +955,30 @@ class Menu:
     def onkey(self, value):
         self._onkey.clear()
         self._onkey += value
+
+    @property
+    def first(self):
+        return self.options[0]
+
+    @property
+    def last(self):
+        return self.options[-1]
+
+    @property
+    def top(self):
+        for idx, pagee in enumerate(self.pager):
+            if pagee.visible:
+                return self.options[idx]
+
+    @property
+    def bottom(self):
+        ret = None
+        for idx, pagee in enumerate(self.pager):
+            if pagee.visible:
+                ret = self.options[idx]
+            else:
+                break
+        return ret
 
     def bind(self, *args, **kwargs):
         return self._onkey.bind(*args, **kwargs)
@@ -1133,6 +1160,10 @@ class MenuItem:
         self._onkey.clear()
         self._onkey += value
 
+    @property
+    def index(self):
+        return self.menu.options.index(self)
+
     def bind(self, *args, **kwargs):
         return self._onkey.bind(*args, **kwargs)
 
@@ -1190,15 +1221,15 @@ class MenuCursor:
             pass
 
         if isinstance(other, MenuItem):
-            ...
+            return other.menu is self.menu and self.menu[self.at] is other
 
         return False
 
     def whatis(self, value):
-        if value == 'home':
-            return 0
-        if value == 'end':
-            return len(self.menu) - 1
+        if isinstance(value, MenuItem):
+            if value.menu is not self.menu:
+                raise ValueError('MenuItem is in different Menu')
+            return value.index
 
         value = int(value)
         N = len(self.menu)
