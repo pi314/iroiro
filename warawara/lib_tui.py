@@ -501,7 +501,7 @@ def deregister_key(seq):
 
     key = key_seq_table.pop(seq, None)
     for alias in key.aliases:
-        key_alias_table.pop(alias)
+        key_alias_table.pop(alias, None)
     return key
 
 
