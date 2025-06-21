@@ -1033,6 +1033,11 @@ class TestPager(TestCase):
             '哇 9',
             ))
 
+    def test_postition_aliases(self):
+        pager = self.get_small_terminal_wah_pager()
+        self.eq(pager.home, 0)
+        self.eq(pager.end, len(pager) - 1)
+
     def test_clear(self):
         pager = self.get_small_terminal_wah_pager()
         pager.render()
