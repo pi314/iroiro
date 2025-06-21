@@ -615,7 +615,7 @@ class Subpager:
     def __iter__(self):
         for pagee in self.parent.data:
             if pagee.section == self.section:
-                yield pagee.text
+                yield pagee
 
     def __getitem__(self, idx):
         return self.lines[idx]

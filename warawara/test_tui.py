@@ -1253,6 +1253,6 @@ class TestPager(TestCase):
             'footer4',
             ))
 
-        self.eq(list(pager.header), ['header1'])
-        self.eq(list(pager), ['哇 0', '哇 1', '哇 2', '哇 3', '哇 4', '哇 5', '哇 6', '哇 7', '哇 8', '哇 9'])
-        self.eq(list(pager.footer), ['footer4'])
+        self.eq(list(p.text for p in pager.header), ['header1'])
+        self.eq(list(p.text for p in pager), ['哇 0', '哇 1', '哇 2', '哇 3', '哇 4', '哇 5', '哇 6', '哇 7', '哇 8', '哇 9'])
+        self.eq(list(p.text for p in pager.footer), ['footer4'])
