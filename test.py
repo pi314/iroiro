@@ -24,6 +24,8 @@ def main():
             menu.cursor = menu.last
         elif key == 'H':
             menu.cursor = menu.top
+        elif key == 'M':
+            menu.cursor = (menu.top.index + menu.bottom.index) // 2
         elif key == 'L':
             menu.cursor = menu.bottom
         pager_info(key)
