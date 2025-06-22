@@ -75,7 +75,8 @@ def main():
     def enter(item, key):
         item.menu.message = 'enter'
         item.menu.done()
-    menu[-1].onkey(warawara.KEY_ENTER, enter)
+    done = menu.append('[done]')
+    done.onkey(warawara.KEY_ENTER, enter)
 
     def index(item, key):
         if key == 'i':

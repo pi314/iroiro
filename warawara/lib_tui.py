@@ -903,7 +903,7 @@ class Menu:
         self.pager = Pager(max_height=max_height)
 
         self.title = title
-        self.options = tuple(MenuItem(self, opt) for opt in options)
+        self.options = [MenuItem(self, opt) for opt in options]
         self.message = ''
 
         self.format = '{cursor} {item.text}'
@@ -985,6 +985,28 @@ class Menu:
             if item is i:
                 return index
         return -1
+
+    def insert(self, index, text='', onkey=None):
+        ret = MenuItem(self, text)
+        self.options.insert(index, ret)
+        if onkey:
+            ret.onkey(onkey)
+        return ret
+
+    def append(self, text='', onkey=None):
+        ret = MenuItem(self, text)
+        self.options.append(ret)
+        if onkey:
+            ret.onkey(onkey)
+        return ret
+
+    def extend(self, options, onkey=None):
+        ret = [MenuItem(self, text) for text in options]
+        self.options.extend(ret)
+        if onkey:
+            for i in ret:
+                i.onkey(onkey)
+        return ret
 
     def bind(self, *args, **kwargs):
         return self._onkey.bind(*args, **kwargs)
