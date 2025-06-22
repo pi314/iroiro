@@ -1176,19 +1176,19 @@ class MenuCursor:
         self.menu = menu
         self.symbol = symbol
         self.wrap = wrap
-        self.at = 0
+        self.index = 0
 
     def __repr__(self):
-        return f'MenuCursor(at={self.at}, wrap={self.wrap})'
+        return f'MenuCursor(index={self.index}, wrap={self.wrap})'
 
     def __str__(self):
         return self.symbol
 
     def __int__(self):
-        return self.at
+        return self.index
 
     def __add__(self, other):
-        return self.whatis(self.at + other)
+        return self.cal_index(self.index + other)
 
     def __radd__(self, other):
         return self + other
@@ -1198,34 +1198,44 @@ class MenuCursor:
         return self
 
     def __sub__(self, other):
-        return self.whatis(self.at - other)
+        return self.cal_index(self.index - other)
 
     def __rsub__(self, other):
-        return other - self.at
+        return other - self.index
 
     def __isub__(self, other):
         self.to(self - other)
         return self
 
     def __lt__(self, other):
-        return self.at < other
+        return self.index < other
 
     def __gt__(self, other):
-        return self.at > other
+        return self.index > other
 
     def __eq__(self, other):
         try:
             if isinstance(other, int):
-                return self.at == other
+                return self.index == other
         except TypeError:
             pass
 
         if isinstance(other, MenuItem):
-            return other.menu is self.menu and self.menu[self.at] is other
+            return other.menu is self.menu and self.menu[self.index] is other
 
         return False
 
-    def whatis(self, value):
+    def __getattr__(self, attr):
+        item = self.menu[self.index]
+        if not attr.startswith('_') and hasattr(item, attr):
+            return getattr(item, attr)
+        raise AttributeError(attr)
+
+    @property
+    def text(self):
+        return self.menu[self.index].text
+
+    def cal_index(self, value):
         if isinstance(value, MenuItem):
             if value.menu is not self.menu:
                 raise ValueError('MenuItem is in different Menu')
@@ -1240,7 +1250,7 @@ class MenuCursor:
             return clamp(0, value, N - 1)
 
     def to(self, value):
-        self.at = self.whatis(value)
+        self.index = self.cal_index(value)
         self.menu.chase_cursor()
 
     def up(self, count=1):

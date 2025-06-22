@@ -6,8 +6,9 @@ def main():
     menu = warawara.Menu('title', warawara.natsorted(os.listdir()), max_height=10)
 
     def pager_info(key):
-        menu.message = 'key={} cursor={} visible={} scroll={} height={}'.format(
-                key, repr(menu.cursor), menu.pager[int(menu.cursor)].visible, menu.pager.scroll, menu.pager.height)
+        menu.message = 'key={} cursor={} text={} visible={} scroll={} height={}'.format(
+                key, repr(menu.cursor),
+                menu.pager[int(menu.cursor)].visible, menu.pager.scroll, menu.pager.height)
 
     def onkey_vim(menu, key):
         if key == 'k':
