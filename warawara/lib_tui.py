@@ -1020,7 +1020,12 @@ class Menu:
     def quit(self, **kwargs):
         raise Menu.GiveUpSelection()
 
-    def chase_cursor(self):
+    def scroll_to_contain(self, index):
+        if isinstance(index, (MenuItem, MenuCursor)):
+            index = index.index
+        else:
+            index = index
+
         if self.pager[int(self.cursor)].visible:
             return
 
@@ -1316,7 +1321,7 @@ class MenuCursor:
 
     def to(self, value):
         self.index = self.cal_index(value)
-        self.menu.chase_cursor()
+        self.menu.scroll_to_contain(self)
 
     def up(self, count=1):
         self -= 1
