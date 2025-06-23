@@ -3,11 +3,15 @@ import warawara
 
 def main():
     import os
-    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), max_height=10)
+    def format(cursor, selected, item, **kwargs):
+        if menu.data.grabbing and menu.cursor == item:
+            return f'{cursor}{item.text}'
+        return f'{cursor} {item.text}'
+    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), format=format, max_height=10)
 
     def pager_info(key):
-        menu.message = 'key={} cursor={} text=[{}] visible={} scroll={} height={}'.format(
-                key, repr(menu.cursor), menu.cursor.text,
+        menu.message = 'key={} cursor={} grab={} text=[{}] visible={} scroll={} height={}'.format(
+                key, repr(menu.cursor), menu.data.grabbing, menu.cursor.text,
                 menu.pager[int(menu.cursor)].visible, menu.pager.scroll, menu.pager.height)
 
     def onkey_vim(menu, key):
@@ -68,7 +72,9 @@ def main():
             menu.message = repr(key)
 
     def grab(menu, key):
-        menu.data.grabbing = not menu.data.grabbing
+        menu.data.grabbing = True
+    def ungrab(menu, key):
+        menu.data.grabbing = False
     def up(menu, key):
         if menu.data.grabbing and menu.cursor > 0:
             menu.swap(menu.cursor, menu.cursor - 1)
@@ -77,9 +83,10 @@ def main():
         if menu.data.grabbing and menu.cursor < len(menu) - 1:
             menu.swap(menu.cursor, menu.cursor + 1)
         menu.cursor.down()
-    menu.onkey('space', grab)
     menu.onkey(warawara.KEY_UP, up)
     menu.onkey('down', down)
+    menu.onkey(warawara.KEY_LEFT, grab)
+    menu.onkey(warawara.KEY_RIGHT, ungrab)
 
     menu.onkey(onkey, onkey_vim, onkey_resize)
     menu.onkey('q', menu.quit)
@@ -94,8 +101,10 @@ def main():
         if key == 'i':
             menu.message = f'index={item.index}'
             return False
+        elif key == 'space':
+            item.toggle()
     for item in menu:
-        item.onkey('i', index)
+        item.onkey('i', 'space', index)
 
     ret = menu.interact()
     print(ret)

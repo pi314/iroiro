@@ -907,7 +907,16 @@ class Menu:
         self.message = ''
         self.data = MenuData()
 
-        self.format = '{cursor} {item.text}'
+        self.type = type
+
+        if format:
+            self.format = format
+        elif self.type in ('()', 'single', 'radio'):
+            self.format = '{cursor} ({selected}) {item.text}'
+        elif self.type in ('[]', 'multi', 'multiple', 'checkbox'):
+            self.format = '{cursor} [{selected}] {item.text}'
+        else:
+            self.format = '{cursor} {item.text}'
 
         self._onkey = MenuKeyHandler(self)
         if onkey:
@@ -921,7 +930,7 @@ class Menu:
     def __getitem__(self, idx):
         if isinstance(idx, MenuCursor):
             if idx.menu is self:
-                idx = int(idx)
+                idx = idx.index
         return self.options[idx]
 
     @property
@@ -1028,6 +1037,15 @@ class Menu:
     def quit(self, **kwargs):
         raise Menu.GiveUpSelection()
 
+    def select(self, item):
+        item.selected = True
+
+    def unselect(self, item):
+        item.selected = False
+
+    def toggle(self, item):
+        item.selected = not item.selected
+
     def scroll_to_contain(self, index):
         if isinstance(index, (MenuItem, MenuCursor)):
             index = index.index
@@ -1074,8 +1092,12 @@ class Menu:
                 cursor = strwidth(str(self.cursor)) * ' '
             else:
                 cursor = self.cursor
-            self.pager[idx] = self.format.format(
+
+            fmt = self.format if callable(self.format) else self.format.format
+            self.pager[idx] = fmt(
+                    menu=self,
                     cursor=cursor,
+                    selected='*' if item.selected else ' ',
                     item=item)
 
         self.pager.footer.append(self.message)
@@ -1215,6 +1237,7 @@ class MenuItem:
         self.menu = menu
         self.text = str(text)
         self.meta = False
+        self.selected = False
         self.data = MenuData()
 
         self._onkey = MenuKeyHandler(self)
@@ -1266,6 +1289,15 @@ class MenuItem:
 
     def unbind(self, *args, **kwargs):
         return self._onkey.unbind(*args, **kwargs)
+
+    def select(self):
+        self.menu.select(self)
+
+    def unselect(self):
+        self.menu.unselect(self)
+
+    def toggle(self):
+        self.menu.toggle(self)
 
 
 class MenuCursor:
