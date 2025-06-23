@@ -905,6 +905,7 @@ class Menu:
         self.title = title
         self.options = [MenuItem(self, opt) for opt in options]
         self.message = ''
+        self.data = MenuData()
 
         self.format = '{cursor} {item.text}'
 
@@ -1007,6 +1008,13 @@ class Menu:
             for i in ret:
                 i.onkey(onkey)
         return ret
+
+    def swap(self, a, b):
+        if isinstance(a, (MenuItem, MenuCursor)):
+            a = a.index
+        if isinstance(b, (MenuItem, MenuCursor)):
+            b = b.index
+        self.options[a], self.options[b] = self.options[b], self.options[a]
 
     def bind(self, *args, **kwargs):
         return self._onkey.bind(*args, **kwargs)
@@ -1176,11 +1184,38 @@ class MenuKeyHandler:
                 break
 
 
+class MenuData:
+    def __init__(self):
+        super().__setattr__('dataset', {})
+
+    def __repr__(self):
+        return f'MenuData({repr(self.dataset)})'
+
+    def __getattr__(self, attr):
+        return self[attr]
+
+    def __setattr__(self, attr, value):
+        self[attr] = value
+
+    def __delattr__(self, attr):
+        del self[attr]
+
+    def __getitem__(self, key):
+        return self.dataset.get(key)
+
+    def __setitem__(self, key, value):
+        self.dataset[key] = value
+
+    def __delitem__(self, key):
+        del self.dataset[key]
+
+
 class MenuItem:
     def __init__(self, menu, text):
         self.menu = menu
         self.text = str(text)
         self.meta = False
+        self.data = MenuData()
 
         self._onkey = MenuKeyHandler(self)
 

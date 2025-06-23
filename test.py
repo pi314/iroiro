@@ -67,8 +67,20 @@ def main():
         else:
             menu.message = repr(key)
 
-    menu.onkey(warawara.KEY_UP, menu.cursor.up)
-    menu.onkey('down', menu.cursor.down)
+    def grab(menu, key):
+        menu.data.grabbing = not menu.data.grabbing
+    def up(menu, key):
+        if menu.data.grabbing and menu.cursor > 0:
+            menu.swap(menu.cursor, menu.cursor - 1)
+        menu.cursor.up()
+    def down(menu, key):
+        if menu.data.grabbing and menu.cursor < len(menu) - 1:
+            menu.swap(menu.cursor, menu.cursor + 1)
+        menu.cursor.down()
+    menu.onkey('space', grab)
+    menu.onkey(warawara.KEY_UP, up)
+    menu.onkey('down', down)
+
     menu.onkey(onkey, onkey_vim, onkey_resize)
     menu.onkey('q', menu.quit)
 
