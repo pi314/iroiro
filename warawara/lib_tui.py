@@ -986,7 +986,7 @@ class Menu:
         for idx, pagee in enumerate(self.pager):
             if pagee.visible:
                 ret = self.options[idx]
-            else:
+            elif ret is not None:
                 break
         return ret
 
@@ -1093,7 +1093,8 @@ class Menu:
             else:
                 cursor = self.cursor
 
-            fmt = self.format if callable(self.format) else self.format.format
+            fmt = item.format or self.format
+            fmt = fmt if callable(fmt) else fmt.format
             self.pager[idx] = fmt(
                     menu=self,
                     cursor=cursor,
@@ -1239,6 +1240,7 @@ class MenuItem:
         self.meta = False
         self.selected = False
         self.data = MenuData()
+        self.format = None
 
         self._onkey = MenuKeyHandler(self)
 

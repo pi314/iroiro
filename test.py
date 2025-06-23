@@ -7,7 +7,7 @@ def main():
         if menu.data.grabbing and menu.cursor == item:
             return f'{cursor}{item.text}'
         return f'{cursor} {item.text}'
-    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), format=format, max_height=10)
+    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), type='()', max_height=10)
 
     def pager_info(key):
         menu.message = 'key={} cursor={} grab={} text=[{}] visible={} scroll={} height={}'.format(
@@ -95,6 +95,7 @@ def main():
         item.menu.message = 'enter'
         item.menu.done()
     done = menu.append('[done]')
+    done.format = '  ({cursor}) {item.text}'
     done.onkey(warawara.KEY_ENTER, enter)
 
     def index(item, key):
