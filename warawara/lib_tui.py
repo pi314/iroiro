@@ -873,24 +873,34 @@ class Pager:
             cursor = idx + (not is_last)
 
 
+class MenuData:
+    def __init__(self):
+        super().__setattr__('dataset', {})
+
+    def __repr__(self):
+        return f'MenuData({repr(self.dataset)})'
+
+    def __getattr__(self, attr):
+        return self[attr]
+
+    def __setattr__(self, attr, value):
+        self[attr] = value
+
+    def __delattr__(self, attr):
+        del self[attr]
+
+    def __getitem__(self, key):
+        return self.dataset.get(key)
+
+    def __setitem__(self, key, value):
+        self.dataset[key] = value
+
+    def __delitem__(self, key):
+        del self.dataset[key]
+
+
 @export
 class Menu:
-    '''
-    > Option1
-      Option2
-
-    > Option1 <
-      Option2
-
-    > [ ] option1
-      [ ] option2
-      { } all
-
-      (*) option1
-    > ( ) option2
-      { } clear
-    '''
-
     class DoneSelection(Exception):
         pass
 
@@ -1151,111 +1161,6 @@ class Menu:
         print()
 
 
-class MenuKeyHandler:
-    def __init__(self, parent):
-        self.parent = parent
-        self.clear()
-
-    def clear(self):
-        self.handlers = {None: []}
-
-    def __iadd__(self, handler):
-        return self.bind(handler)
-
-    def __isub__(self, handler):
-        return self.unbind(handler)
-
-    def __call__(self, *args):
-        return self.bind(*args)
-
-    def bind(self, *args):
-        key_list = [arg for arg in args if not callable(arg)] or [None]
-        handler_list = [arg for arg in args if callable(arg)]
-
-        if not handler_list:
-            raise ValueError('No handlers to bind')
-
-        for key in key_list:
-            key = key_alias_table.get(key, key)
-
-            for handler in handler_list:
-                if key not in self.handlers:
-                    self.handlers[key] = []
-
-                if handler not in self.handlers[key]:
-                    self.handlers[key].append(handler)
-
-        return self
-
-    def unbind(self, *args):
-        key_list = [arg for arg in args if not callable(arg)] or self.handlers.keys()
-        handler_list = [arg for arg in args if callable(arg)]
-
-        for key in key_list:
-            key = key_alias_table.get(key, key)
-
-            if not handler_list:
-                self.handlers.pop(key)
-
-            for handler in handler_list:
-                try:
-                    self.handlers[key].remove(handler)
-                except (KeyError, ValueError):
-                    pass
-
-        return self
-
-    def handle(self, key):
-        remaps = {key}
-        key = key_alias_table.get(key, key)
-        while True:
-            for handler in self.handlers.get(key, []) + self.handlers[None]:
-                try:
-                    param = {}
-                    if isinstance(self.parent, Menu):
-                        param['menu'] = self.parent
-                    elif isinstance(self.parent, MenuItem):
-                        param['item'] = self.parent
-                    ret = handler(key=key, **param)
-                except TypeError:
-                    ret = handler()
-
-                if isinstance(ret, Key) and ret not in remaps:
-                    key = ret
-                    remaps.add(key)
-                    break
-                if ret is not None:
-                    return ret
-            else:
-                break
-
-
-class MenuData:
-    def __init__(self):
-        super().__setattr__('dataset', {})
-
-    def __repr__(self):
-        return f'MenuData({repr(self.dataset)})'
-
-    def __getattr__(self, attr):
-        return self[attr]
-
-    def __setattr__(self, attr, value):
-        self[attr] = value
-
-    def __delattr__(self, attr):
-        del self[attr]
-
-    def __getitem__(self, key):
-        return self.dataset.get(key)
-
-    def __setitem__(self, key, value):
-        self.dataset[key] = value
-
-    def __delitem__(self, key):
-        del self.dataset[key]
-
-
 class MenuItem:
     def __init__(self, menu, text, cursor, checkbox):
         self.menu = menu
@@ -1423,3 +1328,82 @@ class MenuCursor:
 
     def down(self, count=1):
         self += 1
+
+
+class MenuKeyHandler:
+    def __init__(self, parent):
+        self.parent = parent
+        self.clear()
+
+    def clear(self):
+        self.handlers = {None: []}
+
+    def __iadd__(self, handler):
+        return self.bind(handler)
+
+    def __isub__(self, handler):
+        return self.unbind(handler)
+
+    def __call__(self, *args):
+        return self.bind(*args)
+
+    def bind(self, *args):
+        key_list = [arg for arg in args if not callable(arg)] or [None]
+        handler_list = [arg for arg in args if callable(arg)]
+
+        if not handler_list:
+            raise ValueError('No handlers to bind')
+
+        for key in key_list:
+            key = key_alias_table.get(key, key)
+
+            for handler in handler_list:
+                if key not in self.handlers:
+                    self.handlers[key] = []
+
+                if handler not in self.handlers[key]:
+                    self.handlers[key].append(handler)
+
+        return self
+
+    def unbind(self, *args):
+        key_list = [arg for arg in args if not callable(arg)] or self.handlers.keys()
+        handler_list = [arg for arg in args if callable(arg)]
+
+        for key in key_list:
+            key = key_alias_table.get(key, key)
+
+            if not handler_list:
+                self.handlers.pop(key)
+
+            for handler in handler_list:
+                try:
+                    self.handlers[key].remove(handler)
+                except (KeyError, ValueError):
+                    pass
+
+        return self
+
+    def handle(self, key):
+        remaps = {key}
+        key = key_alias_table.get(key, key)
+        while True:
+            for handler in self.handlers.get(key, []) + self.handlers[None]:
+                try:
+                    param = {}
+                    if isinstance(self.parent, Menu):
+                        param['menu'] = self.parent
+                    elif isinstance(self.parent, MenuItem):
+                        param['item'] = self.parent
+                    ret = handler(key=key, **param)
+                except TypeError:
+                    ret = handler()
+
+                if isinstance(ret, Key) and ret not in remaps:
+                    key = ret
+                    remaps.add(key)
+                    break
+                if ret is not None:
+                    return ret
+            else:
+                break
