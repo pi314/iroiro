@@ -3,11 +3,11 @@ import warawara
 
 def main():
     import os
-    def format(cursor, selected, item, **kwargs):
+    def format(menu, cursor, item, check, box):
         if menu.data.grabbing and menu.cursor == item:
-            return f'{cursor}{item.text}'
-        return f'{cursor} {item.text}'
-    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), type='()', max_height=10)
+            return f'{cursor}{box[0]}{check}{box[1]} {item.text}'
+        return f'{cursor} {box[0]}{check}{box[1]} {item.text}'
+    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), checkbox='[哇]', format=format, max_height=10)
 
     def pager_info(key):
         menu.message = 'key={} cursor={} grab={} text=[{}] visible={} scroll={} height={}'.format(
@@ -94,8 +94,7 @@ def main():
     def enter(item, key):
         item.menu.message = 'enter'
         item.menu.done()
-    done = menu.append('[done]')
-    done.format = '  ({cursor}) {item.text}'
+    done = menu.append('[done]', checkbox='(呼)')
     done.onkey(warawara.KEY_ENTER, enter)
 
     def index(item, key):

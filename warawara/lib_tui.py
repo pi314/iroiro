@@ -897,24 +897,46 @@ class Menu:
     class GiveUpSelection(Exception):
         pass
 
+    @staticmethod
+    def parse_checkbox(checkbox):
+        if not checkbox:
+            check = None
+            box = None
+        elif checkbox in ('()', 'single', 'radio'):
+            check = '*'
+            box = checkbox
+        elif checkbox.startswith('(') and checkbox.endswith(')'):
+            check = checkbox[1:-1]
+            box = '()'
+        elif checkbox in ('[]', 'multi', 'multiple', 'checkbox'):
+            check = '*'
+            box = checkbox
+        elif checkbox.startswith('[') and checkbox.endswith(']'):
+            check = checkbox[1:-1]
+            box = '[]'
+        else:
+            check = None
+            box = None
+
+        return check, box
+
     def __init__(self, title, options, *,
-                 max_height=None,
-                 format=None, cursor='>', type=None, onkey=None, wrap=False):
+                 max_height=None, wrap=False,
+                 format=None, cursor='>', checkbox=None,
+                 onkey=None):
         self.pager = Pager(max_height=max_height)
 
         self.title = title
-        self.options = [MenuItem(self, opt) for opt in options]
+        self.options = [MenuItem(self, opt, None, None) for opt in options]
         self.message = ''
         self.data = MenuData()
 
-        self.type = type
+        self.check, self.box = self.parse_checkbox(checkbox)
 
         if format:
             self.format = format
-        elif self.type in ('()', 'single', 'radio'):
-            self.format = '{cursor} ({selected}) {item.text}'
-        elif self.type in ('[]', 'multi', 'multiple', 'checkbox'):
-            self.format = '{cursor} [{selected}] {item.text}'
+        elif self.box:
+            self.format = '{cursor} {box[0]}{check}{box[1]} {item.text}'
         else:
             self.format = '{cursor} {item.text}'
 
@@ -996,22 +1018,22 @@ class Menu:
                 return index
         return -1
 
-    def insert(self, index, text='', onkey=None):
-        ret = MenuItem(self, text)
+    def insert(self, index, text='', cursor=None, checkbox=None, onkey=None):
+        ret = MenuItem(self, text, cursor, checkbox)
         self.options.insert(index, ret)
         if onkey:
             ret.onkey(onkey)
         return ret
 
-    def append(self, text='', onkey=None):
-        ret = MenuItem(self, text)
+    def append(self, text='', cursor=None, checkbox=None, onkey=None):
+        ret = MenuItem(self, text, cursor, checkbox)
         self.options.append(ret)
         if onkey:
             ret.onkey(onkey)
         return ret
 
-    def extend(self, options, onkey=None):
-        ret = [MenuItem(self, text) for text in options]
+    def extend(self, options, cursor=None, checkbox=None, onkey=None):
+        ret = [MenuItem(self, text, cursor, checkbox) for text in options]
         self.options.extend(ret)
         if onkey:
             for i in ret:
@@ -1088,18 +1110,19 @@ class Menu:
             self.pager.header.extend(self.title.split('\n'))
 
         for idx, item in enumerate(self.options):
-            if idx != self.cursor:
-                cursor = strwidth(str(self.cursor)) * ' '
-            else:
-                cursor = self.cursor
+            cursor = item.cursor or self.cursor
+            check = item.check or self.check
+            box = item.box or self.box
 
             fmt = item.format or self.format
             fmt = fmt if callable(fmt) else fmt.format
             self.pager[idx] = fmt(
                     menu=self,
-                    cursor=cursor,
-                    selected='*' if item.selected else ' ',
-                    item=item)
+                    cursor=cursor if self.cursor == idx else (strwidth(str(cursor)) * ' '),
+                    item=item,
+                    check=check if item.selected else (strwidth(check) * ' '),
+                    box=box or ['', ''],
+                    )
 
         self.pager.footer.append(self.message)
 
@@ -1234,13 +1257,16 @@ class MenuData:
 
 
 class MenuItem:
-    def __init__(self, menu, text):
+    def __init__(self, menu, text, cursor, checkbox):
         self.menu = menu
         self.text = str(text)
         self.meta = False
         self.selected = False
         self.data = MenuData()
         self.format = None
+
+        self.cursor = cursor
+        self.check, self.box = Menu.parse_checkbox(checkbox)
 
         self._onkey = MenuKeyHandler(self)
 
