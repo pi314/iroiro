@@ -7,7 +7,7 @@ def main():
         if menu.data.grabbing and menu.cursor == item:
             return f'{cursor}{box[0]}{check}{box[1]} {item.text}'
         return f'{cursor} {box[0]}{check}{box[1]} {item.text}'
-    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), checkbox='[哇]', format=format, max_height=10)
+    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), checkbox='[*]', format=format, max_height=10)
 
     def pager_info(key):
         menu.message = 'key={} cursor={} grab={} text=[{}] visible={} scroll={} height={}'.format(
@@ -94,7 +94,7 @@ def main():
     def enter(item, key):
         item.menu.message = 'enter'
         item.menu.done()
-    done = menu.append('[done]', checkbox='(呼)')
+    done = menu.append('[done]', meta=True)
     done.onkey(warawara.KEY_ENTER, enter)
 
     def index(item, key):
@@ -105,6 +105,12 @@ def main():
             item.toggle()
     for item in menu:
         item.onkey('i', 'space', index)
+
+    select_all = menu.append('Select all', meta=True, checkbox='{*}')
+    select_all.onkey(warawara.KEY_SPACE, menu.select_all)
+
+    select_all = menu.append('Unselect all', meta=True)
+    select_all.onkey(warawara.KEY_SPACE, menu.unselect_all)
 
     ret = menu.interact()
     print(ret)

@@ -937,7 +937,7 @@ class Menu:
         self.pager = Pager(max_height=max_height)
 
         self.title = title
-        self.options = [MenuItem(self, opt, None, None) for opt in options]
+        self.options = [MenuItem(self, False, opt, None, None) for opt in options]
         self.message = ''
         self.data = MenuData()
 
@@ -1028,22 +1028,22 @@ class Menu:
                 return index
         return -1
 
-    def insert(self, index, text='', cursor=None, checkbox=None, onkey=None):
-        ret = MenuItem(self, text, cursor, checkbox)
+    def insert(self, index, text='', cursor=None, checkbox=None, meta=False, onkey=None):
+        ret = MenuItem(self, meta, text, cursor, checkbox)
         self.options.insert(index, ret)
         if onkey:
             ret.onkey(onkey)
         return ret
 
-    def append(self, text='', cursor=None, checkbox=None, onkey=None):
-        ret = MenuItem(self, text, cursor, checkbox)
+    def append(self, text='', cursor=None, checkbox=None, meta=False, onkey=None):
+        ret = MenuItem(self, meta, text, cursor, checkbox)
         self.options.append(ret)
         if onkey:
             ret.onkey(onkey)
         return ret
 
-    def extend(self, options, cursor=None, checkbox=None, onkey=None):
-        ret = [MenuItem(self, text, cursor, checkbox) for text in options]
+    def extend(self, options, cursor=None, checkbox=None, meta=False, onkey=None):
+        ret = [MenuItem(self, meta, text, cursor, checkbox) for text in options]
         self.options.extend(ret)
         if onkey:
             for i in ret:
@@ -1070,13 +1070,27 @@ class Menu:
         raise Menu.GiveUpSelection()
 
     def select(self, item):
+        if self.box == '()':
+            self.unselect_all()
         item.selected = True
+
+    def select_all(self):
+        if self.box == '[]':
+            for item in self.options:
+                item.selected = True
 
     def unselect(self, item):
         item.selected = False
 
+    def unselect_all(self):
+        for item in self.options:
+            item.selected = False
+
     def toggle(self, item):
-        item.selected = not item.selected
+        if item.selected:
+            item.unselect()
+        else:
+            item.select()
 
     def scroll_to_contain(self, index):
         if isinstance(index, (MenuItem, MenuCursor)):
@@ -1162,16 +1176,21 @@ class Menu:
 
 
 class MenuItem:
-    def __init__(self, menu, text, cursor, checkbox):
+    def __init__(self, menu, meta, text, cursor, checkbox):
         self.menu = menu
+        self.meta = meta
         self.text = str(text)
-        self.meta = False
         self.selected = False
         self.data = MenuData()
         self.format = None
 
         self.cursor = cursor
         self.check, self.box = Menu.parse_checkbox(checkbox)
+        if self.meta:
+            if not self.check:
+                self.check = '*'
+            if not self.box:
+                self.box = '{}'
 
         self._onkey = MenuKeyHandler(self)
 
