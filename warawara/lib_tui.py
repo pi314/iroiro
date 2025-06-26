@@ -954,7 +954,11 @@ class Menu:
         if onkey:
             self._onkey += onkey
 
-        self._cursor = MenuCursor(self, symbol=cursor, wrap=wrap)
+        self.cursor_symbol = cursor
+        self._cursor = MenuCursor(self, wrap=wrap)
+
+    def __iter__(self):
+        return iter(self.options)
 
     def __len__(self):
         return len(self.options)
@@ -1133,19 +1137,23 @@ class Menu:
         if self.title:
             self.pager.header.extend(self.title.split('\n'))
 
+        def pad(s):
+            return strwidth(str(s)) * ' '
+
         for idx, item in enumerate(self.options):
-            cursor = item.cursor or self.cursor
+            cursor = self.cursor
             check = item.check or self.check
             box = item.box or self.box
-
             fmt = item.format or self.format
+
+            check = check(item) if callable(check) else check
             fmt = fmt if callable(fmt) else fmt.format
             self.pager[idx] = fmt(
                     menu=self,
-                    cursor=cursor if self.cursor == idx else (strwidth(str(cursor)) * ' '),
+                    cursor=cursor if self.cursor == idx else pad(cursor),
                     item=item,
-                    check=check if item.selected else (strwidth(check) * ' '),
-                    box=box or ['', ''],
+                    check=check if item.selected or item.meta else pad(check),
+                    box=box or ('', ''),
                     )
 
         self.pager.footer.append(self.message)
@@ -1184,7 +1192,7 @@ class MenuItem:
         self.data = MenuData()
         self.format = None
 
-        self.cursor = cursor
+        self.cursor_symbol = cursor
         self.check, self.box = Menu.parse_checkbox(checkbox)
         if self.meta:
             if not self.check:
@@ -1195,7 +1203,7 @@ class MenuItem:
         self._onkey = MenuKeyHandler(self)
 
     def __repr__(self):
-        return f'MenuCursor(index={self.index}, text={self.text})'
+        return f'MenuItem(index={self.index}, text={self.text})'
 
     def __cmp__(self, other):
         a = self.index
@@ -1253,9 +1261,8 @@ class MenuItem:
 
 
 class MenuCursor:
-    def __init__(self, menu, *, symbol=None, wrap=False):
+    def __init__(self, menu, *, wrap=False):
         self.menu = menu
-        self.symbol = symbol
         self.wrap = wrap
         self.index = 0
 
@@ -1263,7 +1270,7 @@ class MenuCursor:
         return f'MenuCursor(index={self.index}, wrap={self.wrap})'
 
     def __str__(self):
-        return self.symbol
+        return self.menu[self].cursor_symbol or self.menu.cursor_symbol
 
     def __int__(self):
         return self.index

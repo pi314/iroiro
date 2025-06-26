@@ -33,6 +33,10 @@ def main():
             menu.cursor = (menu.top.index + menu.bottom.index) // 2
         elif key == 'L':
             menu.cursor = menu.bottom
+
+        if menu.data.grabbing and menu.data.grabbing != menu.cursor:
+            menu.swap(menu.data.grabbing, menu.cursor)
+
         pager_info(key)
 
     def onkey_resize(menu, key):
@@ -72,17 +76,17 @@ def main():
             menu.message = repr(key)
 
     def grab(menu, key):
-        menu.data.grabbing = True
+        menu.data.grabbing = menu[menu.cursor]
     def ungrab(menu, key):
-        menu.data.grabbing = False
+        menu.data.grabbing = None
     def up(menu, key):
-        if menu.data.grabbing and menu.cursor > 0:
-            menu.swap(menu.cursor, menu.cursor - 1)
         menu.cursor.up()
+        if menu.data.grabbing and menu.data.grabbing != menu.cursor:
+            menu.swap(menu.data.grabbing, menu.cursor)
     def down(menu, key):
-        if menu.data.grabbing and menu.cursor < len(menu) - 1:
-            menu.swap(menu.cursor, menu.cursor + 1)
         menu.cursor.down()
+        if menu.data.grabbing and menu.data.grabbing != menu.cursor:
+            menu.swap(menu.data.grabbing, menu.cursor)
     menu.onkey(warawara.KEY_UP, up)
     menu.onkey('down', down)
     menu.onkey(warawara.KEY_LEFT, grab)
@@ -90,12 +94,6 @@ def main():
 
     menu.onkey(onkey, onkey_vim, onkey_resize)
     menu.onkey('q', menu.quit)
-
-    def enter(item, key):
-        item.menu.message = 'enter'
-        item.menu.done()
-    done = menu.append('[done]', meta=True)
-    done.onkey(warawara.KEY_ENTER, enter)
 
     def index(item, key):
         if key == 'i':
@@ -106,11 +104,38 @@ def main():
     for item in menu:
         item.onkey('i', 'space', index)
 
-    select_all = menu.append('Select all', meta=True, checkbox='{*}')
+    select_all = menu.append('Select all', meta=True)
+    def check(*args, **kwargs):
+        if all(item.selected for item in menu if not item.meta):
+            return '*'
+        elif all(not item.selected for item in menu if not item.meta):
+            return ' '
+        else:
+            return '+'
+    select_all.check = check
     select_all.onkey(warawara.KEY_SPACE, menu.select_all)
 
-    select_all = menu.append('Unselect all', meta=True)
-    select_all.onkey(warawara.KEY_SPACE, menu.unselect_all)
+    unselect_all = menu.append('Unselect all', meta=True)
+    def check(item):
+        if all(item.selected for item in menu if not item.meta):
+            return ' '
+        elif all(not item.selected for item in menu if not item.meta):
+            return '*'
+        else:
+            return '-'
+    unselect_all.check = check
+    unselect_all.onkey(warawara.KEY_SPACE, menu.unselect_all)
+
+    def enter(item, key):
+        item.menu.message = 'enter'
+        item.menu.done()
+    done = menu.append('Done', meta=True)
+    def format_done(menu, cursor, item, check, box):
+        if menu.data.grabbing and menu.cursor == item:
+            return f'{cursor}{item.text}'
+        return f'{cursor} {item.text}'
+    done.format = format_done
+    done.onkey(warawara.KEY_ENTER, enter)
 
     ret = menu.interact()
     print(ret)
