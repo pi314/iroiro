@@ -964,7 +964,7 @@ class Menu:
         return len(self.options)
 
     def __getitem__(self, idx):
-        if isinstance(idx, MenuCursor):
+        if isinstance(idx, (MenuItem, MenuCursor)):
             if idx.menu is self:
                 idx = idx.index
         return self.options[idx]
@@ -1060,6 +1060,30 @@ class Menu:
         if isinstance(b, (MenuItem, MenuCursor)):
             b = b.index
         self.options[a], self.options[b] = self.options[b], self.options[a]
+
+    def moveto(self, item, to):
+        if not isinstance(item, MenuItem):
+            raise TypeError('item should be a MenuItem')
+
+        if isinstance(item, (MenuItem, MenuCursor)):
+            item = item.index
+        if isinstance(to, (MenuItem, MenuCursor)):
+            to = to.index
+
+        if item < to: # move down
+            item = self.options.pop(item)
+            self.options.insert(to, item)
+            return
+
+        if item > to: # move up
+            self.options = (
+                    self.options[:to] +
+                    [self.options[item]] +
+                    [self.options[to]] +
+                    self.options[to+1:item] +
+                    self.options[item+1:]
+                    )
+            return
 
     def bind(self, *args, **kwargs):
         return self._onkey.bind(*args, **kwargs)
@@ -1258,6 +1282,9 @@ class MenuItem:
 
     def toggle(self):
         self.menu.toggle(self)
+
+    def moveto(self, where):
+        self.menu.moveto(self, where)
 
 
 class MenuCursor:

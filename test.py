@@ -34,8 +34,8 @@ def main():
         elif key == 'L':
             menu.cursor = menu.bottom
 
-        if menu.data.grabbing and menu.data.grabbing != menu.cursor:
-            menu.swap(menu.data.grabbing, menu.cursor)
+        if menu.data.grabbing:
+            menu.data.grabbing.moveto(menu.cursor)
 
         pager_info(key)
 
@@ -81,12 +81,12 @@ def main():
         menu.data.grabbing = None
     def up(menu, key):
         menu.cursor.up()
-        if menu.data.grabbing and menu.data.grabbing != menu.cursor:
-            menu.swap(menu.data.grabbing, menu.cursor)
+        if menu.data.grabbing:
+            menu.data.grabbing.moveto(menu.cursor)
     def down(menu, key):
         menu.cursor.down()
-        if menu.data.grabbing and menu.data.grabbing != menu.cursor:
-            menu.swap(menu.data.grabbing, menu.cursor)
+        if menu.data.grabbing:
+            menu.data.grabbing.moveto(menu.cursor)
     menu.onkey(warawara.KEY_UP, up)
     menu.onkey('down', down)
     menu.onkey(warawara.KEY_LEFT, grab)
