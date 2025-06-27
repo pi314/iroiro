@@ -1071,8 +1071,13 @@ class Menu:
             to = to.index
 
         if item < to: # move down
-            item = self.options.pop(item)
-            self.options.insert(to, item)
+            self.options = (
+                    self.options[:item] +
+                    self.options[item+1:to] +
+                    [self.options[to]] +
+                    [self.options[item]] +
+                    self.options[to+1:]
+                    )
             return
 
         if item > to: # move up

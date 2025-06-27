@@ -19,6 +19,10 @@ def main():
             return warawara.KEY_UP
         elif key == 'j':
             return warawara.KEY_DOWN
+        if key == 'h':
+            return warawara.KEY_LEFT
+        elif key == 'l':
+            return warawara.KEY_RIGHT
         elif key == 'ctrl-y':
             menu.scroll(-1)
         elif key == 'ctrl-e':
