@@ -141,6 +141,15 @@ def main():
     done.format = format_done
     done.onkey(warawara.KEY_ENTER, enter)
 
+    def enter(menu, key):
+        if menu.cursor.meta:
+            return
+        elif menu.cursor.selected:
+            menu.done()
+        else:
+            menu.cursor.select()
+    menu.onkey(warawara.KEY_ENTER, enter)
+
     ret = menu.interact()
     print(ret)
 

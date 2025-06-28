@@ -1031,7 +1031,7 @@ class Menu:
         selected_items = [item for item in self if item.selected and not item.meta]
         if self.box == '[]':
             return selected_items
-        elif self.box == '()':
+        elif self.box == '()' or not self.box:
             if selected_items:
                 return selected_items[0]
 
@@ -1106,6 +1106,8 @@ class Menu:
         return self._onkey.unbind(*args, **kwargs)
 
     def done(self, **kwargs):
+        if not self.box:
+            self.cursor.select()
         raise Menu.DoneSelection()
 
     def quit(self, **kwargs):
@@ -1176,6 +1178,8 @@ class Menu:
             self.pager.header.extend(self.title.split('\n'))
 
         def pad(s):
+            if not s:
+                return ''
             return strwidth(str(s)) * ' '
 
         for idx, item in enumerate(self.options):
@@ -1184,6 +1188,7 @@ class Menu:
             box = item.box or self.box
             fmt = item.format or self.format
 
+            check = '' if check is None else check
             check = check(item) if callable(check) else check
             fmt = fmt if callable(fmt) else fmt.format
             self.pager[idx] = fmt(
