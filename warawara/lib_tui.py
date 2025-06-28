@@ -1026,6 +1026,15 @@ class Menu:
                 break
         return ret
 
+    @property
+    def selected(self):
+        selected_items = [item for item in self if item.selected and not item.meta]
+        if self.box == '[]':
+            return selected_items
+        elif self.box == '()':
+            if selected_items:
+                return selected_items[0]
+
     def index(self, item):
         for index, i in enumerate(self.options):
             if item is i:
@@ -1190,26 +1199,27 @@ class Menu:
         self.pager.render()
 
     def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
-        with HijackStdio():
-            with ExceptionSuppressor(suppress):
-                while True:
-                    self.render()
-                    ch = getch(capture='fs')
-
-                    self.message = repr(ch)
-
-                    try:
-                        ret = self[self.cursor].onkey.handle(ch)
-                        if ret is None:
-                            self.onkey.handle(ch)
-                    except Menu.GiveUpSelection:
+        try:
+            with HijackStdio():
+                with ExceptionSuppressor(suppress):
+                    while True:
                         self.render()
-                        break
-                    except Menu.DoneSelection:
-                        self.render()
-                        break
+                        ch = getch(capture='fs')
 
-        print()
+                        self.message = repr(ch)
+
+                        try:
+                            ret = self[self.cursor].onkey.handle(ch)
+                            if ret is None:
+                                self.onkey.handle(ch)
+                        except Menu.GiveUpSelection:
+                            self.render()
+                            return None
+                        except Menu.DoneSelection:
+                            self.render()
+                            return self.selected
+        finally:
+            print()
 
 
 class MenuItem:
