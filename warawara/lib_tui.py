@@ -1136,6 +1136,12 @@ class Menu:
         else:
             item.select()
 
+    def feedkey(self, key):
+        ret = self[self.cursor].onkey.handle(key)
+        if ret:
+            return ret
+        return self.onkey.handle(key)
+
     def scroll_to_contain(self, index):
         if isinstance(index, (MenuItem, MenuCursor)):
             index = index.index
@@ -1214,9 +1220,7 @@ class Menu:
                         self.message = repr(ch)
 
                         try:
-                            ret = self[self.cursor].onkey.handle(ch)
-                            if ret is None:
-                                self.onkey.handle(ch)
+                            self.feedkey(ch)
                         except Menu.GiveUpSelection:
                             self.render()
                             return None
@@ -1305,6 +1309,9 @@ class MenuItem:
 
     def moveto(self, where):
         self.menu.moveto(self, where)
+
+    def feedkey(self, key):
+        return self.onkey.handle(key)
 
 
 class MenuCursor:
@@ -1458,25 +1465,17 @@ class MenuKeyHandler:
         return self
 
     def handle(self, key):
-        remaps = {key}
         key = key_alias_table.get(key, key)
-        while True:
-            for handler in self.handlers.get(key, []) + self.handlers[None]:
-                try:
-                    param = {}
-                    if isinstance(self.parent, Menu):
-                        param['menu'] = self.parent
-                    elif isinstance(self.parent, MenuItem):
-                        param['item'] = self.parent
-                    ret = handler(key=key, **param)
-                except TypeError:
-                    ret = handler()
+        for handler in self.handlers.get(key, []) + self.handlers[None]:
+            try:
+                param = {}
+                if isinstance(self.parent, Menu):
+                    param['menu'] = self.parent
+                elif isinstance(self.parent, MenuItem):
+                    param['item'] = self.parent
+                ret = handler(key=key, **param)
+            except TypeError:
+                ret = handler()
 
-                if isinstance(ret, Key) and ret not in remaps:
-                    key = ret
-                    remaps.add(key)
-                    break
-                if ret is not None:
-                    return ret
-            else:
-                break
+            if ret:
+                return ret

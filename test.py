@@ -16,13 +16,13 @@ def main():
 
     def onkey_vim(menu, key):
         if key == 'k':
-            return warawara.KEY_UP
+            return menu.feedkey(warawara.KEY_UP)
         elif key == 'j':
-            return warawara.KEY_DOWN
+            return menu.feedkey(warawara.KEY_DOWN)
         if key == 'h':
-            return warawara.KEY_LEFT
+            return menu.feedkey(warawara.KEY_LEFT)
         elif key == 'l':
-            return warawara.KEY_RIGHT
+            return menu.feedkey(warawara.KEY_RIGHT)
         elif key == 'ctrl-y':
             menu.scroll(-1)
         elif key == 'ctrl-e':
@@ -77,7 +77,7 @@ def main():
         if not unknown_key:
             pager_info(key)
         else:
-            menu.message = repr(key)
+            menu.message = '[' + repr(key) + ']'
 
     def grab(menu, key):
         menu.data.grabbing = menu[menu.cursor]
@@ -141,14 +141,14 @@ def main():
     done.format = format_done
     done.onkey(warawara.KEY_ENTER, enter)
 
-    def enter(menu, key):
+    def menu_enter(menu, key):
         if menu.cursor.meta:
-            return
+            return menu.cursor.feedkey(warawara.KEY_SPACE)
         elif menu.cursor.selected:
             menu.done()
         else:
             menu.cursor.select()
-    menu.onkey(warawara.KEY_ENTER, enter)
+    menu.onkey(warawara.KEY_ENTER, menu_enter)
 
     ret = menu.interact()
     print(ret)
