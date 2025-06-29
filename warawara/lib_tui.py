@@ -910,6 +910,10 @@ class Menu:
     class GiveUpSelection(Exception):
         pass
 
+    class StdoutIsNotAtty(Exception):
+        def __init__(self):
+            super().__init__('Stdout should be a tty for using interactive menu')
+
     @staticmethod
     def parse_checkbox(checkbox):
         if not checkbox:
