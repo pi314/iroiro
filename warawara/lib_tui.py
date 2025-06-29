@@ -884,7 +884,10 @@ class MenuData:
         return self[attr]
 
     def __setattr__(self, attr, value):
-        self[attr] = value
+        if value is None:
+            del self[attr]
+        else:
+            self[attr] = value
 
     def __delattr__(self, attr):
         del self[attr]
