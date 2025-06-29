@@ -1217,8 +1217,6 @@ class Menu:
                         self.render()
                         ch = getch(capture='fs')
 
-                        self.message = repr(ch)
-
                         try:
                             self.feedkey(ch)
                         except Menu.GiveUpSelection:
