@@ -4,9 +4,13 @@ import warawara
 def main():
     import os
     def format(menu, cursor, item, check, box):
+        ind = ''
+        if item.data.ind:
+            ind = ' ' + item.data.ind
+
         if menu.data.grabbing and menu.cursor == item:
-            return f'{cursor}{box[0]}{check}{box[1]} {item.text}'
-        return f'{cursor} {box[0]}{check}{box[1]} {item.text}'
+            return f'{cursor}{box[0]}{check}{box[1]} {item.text}{ind}'
+        return f'{cursor} {box[0]}{check}{box[1]} {item.text}{ind}'
     menu = warawara.Menu('title', warawara.natsorted(os.listdir()), checkbox='[*]', format=format, max_height=10)
 
     def pager_info(key):
@@ -105,6 +109,25 @@ def main():
             return False
         elif key == 'space':
             item.toggle()
+            import time
+            import threading
+            if not item.data.thread:
+                def task():
+                    limit = 20
+                    item.data.start = time.time()
+                    while (time.time() - item.data.start) < limit:
+                        item.data.ind = f'({int((limit + item.data.start - time.time()) * 1000) / 1000})'
+                        item.menu.refresh()
+                        if not menu.active:
+                            break
+                    del item.data.thread
+                    del item.data.ind
+                    item.menu.refresh()
+                item.data.thread = threading.Thread(target=task, daemon=True)
+                item.data.thread.start()
+            else:
+                item.data.start = time.time()
+
     for item in menu:
         item.onkey('i', 'space', index)
 

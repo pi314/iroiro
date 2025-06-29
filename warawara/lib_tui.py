@@ -964,6 +964,13 @@ class Menu:
         self.cursor_symbol = cursor
         self._cursor = MenuCursor(self, wrap=wrap)
 
+        self._active = False
+
+        import threading
+        self._render_lock = threading.RLock()
+        self._refresh_lock = threading.Lock()
+        self._render_timestamp = 0
+
     def __iter__(self):
         return iter(self.options)
 
@@ -975,6 +982,14 @@ class Menu:
             if idx.menu is self:
                 idx = idx.index
         return self.options[idx]
+
+    @property
+    def busy(self):
+        return self._render_lock.locked()
+
+    @property
+    def active(self):
+        return self._active
 
     @property
     def wrap(self):
@@ -1184,7 +1199,10 @@ class Menu:
         self.pager.scroll += count
         self.pull_cursor()
 
-    def render(self):
+    def do_render(self, regardless=False):
+        if not self.active:
+            return
+
         self.pager.clear()
 
         if self.title:
@@ -1216,24 +1234,54 @@ class Menu:
 
         self.pager.render()
 
-    def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
-        try:
-            with HijackStdio():
-                with ExceptionSuppressor(suppress):
-                    while True:
-                        self.render()
-                        ch = getch(capture='fs')
+        import time
+        self._render_timestamp = time.time()
 
-                        try:
-                            self.feedkey(ch)
-                        except Menu.GiveUpSelection:
-                            self.render()
-                            return None
-                        except Menu.DoneSelection:
-                            self.render()
-                            return self.selected
+    def guarded_render(self, vip=False):
+        try:
+            acquired = self._render_lock.acquire(timeout=-1 if vip else 0)
+            if acquired:
+                self.do_render(regardless=vip)
         finally:
+            if acquired:
+                self._render_lock.release()
+
+    @property
+    def render(self):
+        return self.refresh
+
+    def refresh(self):
+        with self._refresh_lock:
+            import time
+            if (time.time() - self._render_timestamp) < 0.05:
+                return
+            self.guarded_render()
+
+    def interact_loop(self):
+        try:
+            self._active = True
+            while True:
+                self.guarded_render(vip=True)
+                ch = getch(capture='fs')
+                try:
+                    with self._render_lock:
+                        self.feedkey(ch)
+                except Menu.GiveUpSelection:
+                    return None
+                except Menu.DoneSelection:
+                    return self.selected
+        finally:
+            self._active = False
+            self.guarded_render(vip=True)
             print()
+
+    def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
+        if not sys.stdout.isatty():
+            raise Menu.StdoutIsNotAtty()
+
+        with HijackStdio():
+            with ExceptionSuppressor(suppress):
+                return self.interact_loop()
 
 
 class MenuItem:
