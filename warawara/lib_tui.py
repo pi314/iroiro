@@ -1409,10 +1409,10 @@ class MenuCursor:
         self.menu.scroll_to_contain(self)
 
     def up(self, count=1):
-        self -= 1
+        self -= count
 
     def down(self, count=1):
-        self += 1
+        self += count
 
 
 class MenuKeyHandler:
