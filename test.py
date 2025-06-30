@@ -110,7 +110,6 @@ def main():
         elif key == 'space':
             item.toggle()
             import time
-            import threading
             if not item.data.thread:
                 def task():
                     limit = 5
@@ -123,7 +122,7 @@ def main():
                     del item.data.thread
                     del item.data.ind
                     item.menu.refresh()
-                item.data.thread = threading.Thread(target=task, daemon=True)
+                item.data.thread = menu.Thread(target=task)
                 item.data.thread.start()
             else:
                 item.data.start = time.time()

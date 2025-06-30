@@ -902,6 +902,34 @@ class MenuData:
         del self.dataset[key]
 
 
+class MenuThread:
+    def __init__(self, menu, target=None, name=None, args=(), kwargs={}):
+        self.menu = menu
+        self.target = target
+        self.name = name
+        self.args = args
+        self.kwargs = kwargs
+        self.thread = None
+
+    def start(self):
+        import threading
+        self.thread = threading.Thread(
+                target=self.target, name=self.name,
+                args=self.args, kwargs=self.kwargs,
+                daemon=True)
+
+        # register self to self.menu
+        self.menu.notify_start(self.thread)
+
+        self.thread.start()
+
+    def is_alive(self):
+        return self.thread and self.thread.is_alive()
+
+    def join(self):
+        self.thread.join()
+
+
 @export
 class Menu:
     class DoneSelection(Exception):
@@ -974,6 +1002,8 @@ class Menu:
         from .lib_threading import Timer
         self._refresh_makeup_timer = Timer(1 / 60, self.refresh)
 
+        self._threads = []
+
     def __iter__(self):
         return iter(self.options)
 
@@ -985,6 +1015,12 @@ class Menu:
             if idx.menu is self:
                 idx = idx.index
         return self.options[idx]
+
+    def Thread(self, target=None, name=None, args=(), kwargs={}):
+        return MenuThread(menu=self, target=target, name=name, args=args, kwargs=kwargs)
+
+    def notify_start(self, thread):
+        self._threads.append(thread)
 
     @property
     def busy(self):
@@ -1278,6 +1314,7 @@ class Menu:
                 except Menu.DoneSelection:
                     return self.selected
         finally:
+            self.join()
             self._active = False
             self.guarded_render(force=True)
             print()
@@ -1289,6 +1326,11 @@ class Menu:
         with HijackStdio():
             with ExceptionSuppressor(suppress):
                 return self.interact_loop()
+
+    def join(self):
+        while self._threads:
+            self._threads[0].join()
+            self._threads.pop(0)
 
 
 class MenuItem:
