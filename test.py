@@ -113,7 +113,7 @@ def main():
             import threading
             if not item.data.thread:
                 def task():
-                    limit = 20
+                    limit = 5
                     item.data.start = time.time()
                     while (time.time() - item.data.start) < limit:
                         item.data.ind = f'({int((limit + item.data.start - time.time()) * 1000) / 1000})'

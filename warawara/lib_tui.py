@@ -971,6 +971,9 @@ class Menu:
         self._refresh_lock = threading.Lock()
         self._render_timestamp = 0
 
+        from .lib_threading import Timer
+        self._refresh_makeup_timer = Timer(1 / 60, self.refresh)
+
     def __iter__(self):
         return iter(self.options)
 
@@ -1199,8 +1202,8 @@ class Menu:
         self.pager.scroll += count
         self.pull_cursor()
 
-    def do_render(self, regardless=False):
-        if not self.active:
+    def do_render(self, force=False):
+        if not self.active and not force:
             return
 
         self.pager.clear()
@@ -1237,11 +1240,13 @@ class Menu:
         import time
         self._render_timestamp = time.time()
 
-    def guarded_render(self, vip=False):
+    def guarded_render(self, force=False):
         try:
-            acquired = self._render_lock.acquire(timeout=-1 if vip else 0)
+            acquired = self._render_lock.acquire(timeout=-1 if force else 0)
             if acquired:
-                self.do_render(regardless=vip)
+                if self._refresh_makeup_timer.active:
+                    self._refresh_makeup_timer.cancel()
+                self.do_render(force=force)
         finally:
             if acquired:
                 self._render_lock.release()
@@ -1253,7 +1258,9 @@ class Menu:
     def refresh(self):
         with self._refresh_lock:
             import time
-            if (time.time() - self._render_timestamp) < 0.05:
+            if (time.time() - self._render_timestamp) < self._refresh_makeup_timer.interval:
+                if not self._refresh_makeup_timer.active:
+                    self._refresh_makeup_timer.start()
                 return
             self.guarded_render()
 
@@ -1261,7 +1268,7 @@ class Menu:
         try:
             self._active = True
             while True:
-                self.guarded_render(vip=True)
+                self.guarded_render(force=True)
                 ch = getch(capture='fs')
                 try:
                     with self._render_lock:
@@ -1272,7 +1279,7 @@ class Menu:
                     return self.selected
         finally:
             self._active = False
-            self.guarded_render(vip=True)
+            self.guarded_render(force=True)
             print()
 
     def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):
