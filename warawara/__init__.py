@@ -1,5 +1,6 @@
 __version__ = '0.2.0'
 
+__all__ = []
 
 def check_python_version():
     import sys
@@ -23,12 +24,16 @@ def load_internal_modules(prefix, post_load_hook):
 
 
 def post_load_lib(module, mod_name):
+    global __all__
+
     ext_name = mod_name[4:]
 
     if '__all__' in module.__dict__:
         attrs = module.__dict__['__all__']
     else:
         attrs = [x for x in module.__dict__ if not x.startswith('_')]
+
+    __all__ += attrs
 
     # Register module into package namespace with external name
     globals()[ext_name] = module
