@@ -995,12 +995,9 @@ class Menu:
         self._active = False
 
         import threading
-        self._render_lock = threading.RLock()
-        self._refresh_lock = threading.Lock()
-        self._render_timestamp = 0
 
-        from .lib_threading import Timer
-        self._refresh_makeup_timer = Timer(1 / 60, self.refresh)
+        from .lib_threading import Throttler
+        self._refresh_throttler = Throttler(self.do_render, 1/60)
 
         self._threads = []
 
@@ -1021,10 +1018,6 @@ class Menu:
 
     def notify_start(self, thread):
         self._threads.append(thread)
-
-    @property
-    def busy(self):
-        return self._render_lock.locked()
 
     @property
     def active(self):
@@ -1244,6 +1237,9 @@ class Menu:
 
         self.pager.clear()
 
+        # import time
+        # time.sleep(0.1)
+
         if self.title:
             self.pager.header.extend(self.title.split('\n'))
 
@@ -1273,50 +1269,29 @@ class Menu:
 
         self.pager.render()
 
-        import time
-        self._render_timestamp = time.time()
-
-    def guarded_render(self, force=False):
-        try:
-            acquired = self._render_lock.acquire(timeout=-1 if force else 0)
-            if acquired:
-                if self._refresh_makeup_timer.active:
-                    self._refresh_makeup_timer.cancel()
-                self.do_render(force=force)
-        finally:
-            if acquired:
-                self._render_lock.release()
-
-    @property
-    def render(self):
-        return self.refresh
-
-    def refresh(self):
-        with self._refresh_lock:
-            import time
-            if (time.time() - self._render_timestamp) < self._refresh_makeup_timer.interval:
-                if not self._refresh_makeup_timer.active:
-                    self._refresh_makeup_timer.start()
-                return
-            self.guarded_render()
+    def refresh(self, force=False):
+        if force:
+            self._refresh_throttler.hipri(force=True)
+        else:
+            self._refresh_throttler.lopri()
 
     def interact_loop(self):
         try:
             self._active = True
             while True:
-                self.guarded_render(force=True)
+                self.refresh(force=True)
                 ch = getch(capture='fs')
                 try:
-                    with self._render_lock:
+                    with self._refresh_throttler.main_lock:
                         self.feedkey(ch)
                 except Menu.GiveUpSelection:
                     return None
                 except Menu.DoneSelection:
                     return self.selected
         finally:
-            self.join()
+            # self.join()
             self._active = False
-            self.guarded_render(force=True)
+            self.refresh(force=True)
             print()
 
     def interact(self, *, suppress=(EOFError, KeyboardInterrupt, BlockingIOError)):

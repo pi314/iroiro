@@ -11,7 +11,7 @@ def main():
         if menu.data.grabbing and menu.cursor == item:
             return f'{cursor}{box[0]}{check}{box[1]} {item.text}{ind}'
         return f'{cursor} {box[0]}{check}{box[1]} {item.text}{ind}'
-    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), checkbox='[*]', format=format, max_height=10)
+    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), checkbox='[*]', format=format, max_height=20)
 
     def pager_info(key):
         menu.message = 'key={} cursor={} grab={} text=[{}] visible={} scroll={} height={}'.format(
@@ -116,6 +116,7 @@ def main():
                     item.data.start = time.time()
                     while (time.time() - item.data.start) < limit:
                         item.data.ind = f'({int((limit + item.data.start - time.time()) * 1000) / 1000})'
+                        time.sleep(0.0005)
                         item.menu.refresh()
                         if not menu.active:
                             break
@@ -139,7 +140,12 @@ def main():
         else:
             return '+'
     select_all.check = check
-    select_all.onkey(warawara.KEY_SPACE, menu.select_all)
+    def select_and_trigger_all(item, key):
+        item.menu.select_all()
+        for item in menu:
+           if not item.meta:
+                item.feedkey(warawara.KEY_SPACE)
+    select_all.onkey(warawara.KEY_SPACE, select_and_trigger_all)
 
     unselect_all = menu.append('Unselect all', meta=True)
     def check(item):
