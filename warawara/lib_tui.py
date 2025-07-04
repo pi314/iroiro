@@ -899,7 +899,8 @@ class MenuData:
         self.dataset[key] = value
 
     def __delitem__(self, key):
-        del self.dataset[key]
+        if key in self.dataset:
+            del self.dataset[key]
 
 
 class MenuThread:

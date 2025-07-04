@@ -79,10 +79,10 @@ class Timer:
         self._canceled = threading.Event()
 
     def callback(self, *args, **kwargs):
-        self._expired.set()
         with self.rlock:
+            self._expired.set()
             self.timer = None
-        self.ret = self.func(*args, **kwargs)
+            self.ret = self.func(*args, **kwargs)
 
     def start(self, interval=None, args=None, kwargs=None):
         with self.rlock:
@@ -107,9 +107,8 @@ class Timer:
 
             self.timer.cancel()
             self.timer = None
-            if not self.expired:
-                self._canceled.set()
-            return self.canceled
+            self._canceled.set()
+            return True
 
     def join(self):
         return self.timer.join()
@@ -132,7 +131,7 @@ class Timer:
     @property
     def canceled(self):
         with self.rlock:
-            return not self.active and not self.expired
+            return self._canceled.is_set()
 
 
 class Throttler:
