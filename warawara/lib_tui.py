@@ -880,27 +880,27 @@ class MenuData:
     def __repr__(self):
         return f'MenuData({repr(self.dataset)})'
 
-    def __getattr__(self, attr):
-        return self[attr]
-
-    def __setattr__(self, attr, value):
+    def __setitem__(self, key, value):
         if value is None:
-            del self[attr]
+            del self.dataset[key]
         else:
-            self[attr] = value
-
-    def __delattr__(self, attr):
-        del self[attr]
+            self.dataset[key] = value
 
     def __getitem__(self, key):
         return self.dataset.get(key)
 
-    def __setitem__(self, key, value):
-        self.dataset[key] = value
-
     def __delitem__(self, key):
         if key in self.dataset:
             del self.dataset[key]
+
+    def __getattr__(self, attr):
+        return self[attr]
+
+    def __setattr__(self, attr, value):
+        self[attr] = value
+
+    def __delattr__(self, attr):
+        del self[attr]
 
 
 class MenuThread:
