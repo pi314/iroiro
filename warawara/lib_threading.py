@@ -14,7 +14,7 @@ class Timer:
         self.kwargs = None
         self.ret = None
 
-        self.rlock = threading.RLock()
+        self.rlock = RLock()
         self.timer = None
         self._expired = threading.Event()
         self._canceled = threading.Event()
@@ -76,6 +76,57 @@ class Timer:
             return not self.active and not self.expired
 
 
+class LockWrapper:
+    def __init__(self, lock_type):
+        self.lock = lock_type()
+
+    def acquire(self, blocking=True, timeout=-1):
+        acquired = self.lock.acquire(blocking=blocking, timeout=timeout)
+        return Locked(self.lock, acquired)
+
+    def release(self):
+        return self.lock.release()
+
+    def __enter__(self):
+        return self.acquire()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self.release()
+
+    @property
+    def locked(self):
+        return self.lock.locked()
+
+
+class Lock(LockWrapper):
+    def __init__(self):
+        super().__init__(threading.Lock)
+
+
+class RLock(LockWrapper):
+    def __init__(self):
+        super().__init__(threading.RLock)
+
+
+class Locked:
+    def __init__(self, lock, acquired):
+        self.lock = lock
+        self.acquired = acquired
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.acquired:
+            return self.lock.release()
+
+    def __getattr__(self, attr):
+        return getattr(self.lock, attr)
+
+    def __bool__(self):
+        return self.acquired
+
+
 class Throttler:
     def __init__(self, func, interval):
         self.func = func
@@ -84,8 +135,8 @@ class Throttler:
         self.timestamp = 0
         self.timer = Timer(self.lopri)
 
-        self.trtl_lock = threading.Lock()
-        self.main_lock = threading.Lock()
+        self.trtl_lock = Lock()
+        self.main_lock = Lock()
 
     def callback(self, *args, **kwargs):
         ret = self.func(*args, **kwargs)
@@ -93,10 +144,9 @@ class Throttler:
         return ret
 
     def lopri(self, *args, **kwargs):
-        try:
-            # throttling: block simultaneous callers
-            ll = self.trtl_lock.acquire(blocking=False)
-            if not ll:
+        # throttling: block simultaneous callers
+        with self.trtl_lock.acquire(blocking=False) as tl:
+            if not tl:
                 return False
 
             # throttling: block simultaneous callers
@@ -108,20 +158,12 @@ class Throttler:
             if delta < self.interval:
                 return self.timer.start(self.interval - delta, args, kwargs)
 
-            try:
-                aq = self.main_lock.acquire(blocking=False)
-                if not aq:
+            with self.main_lock.acquire(blocking=False) as ml:
+                if not ml:
                     return False
 
                 self.callback(*args, **kwargs)
                 return True
-            finally:
-                if aq:
-                    self.main_lock.release()
-
-        finally:
-            if ll:
-                self.trtl_lock.release()
 
     def hipri(self, *args, **kwargs):
         with self.main_lock:
