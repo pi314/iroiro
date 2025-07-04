@@ -5,6 +5,57 @@ from .internal_utils import exporter
 export, __all__ = exporter()
 
 
+class LockWrapper:
+    def __init__(self, lock_type):
+        self.lock = lock_type()
+
+    def acquire(self, blocking=True, timeout=-1):
+        acquired = self.lock.acquire(blocking=blocking, timeout=timeout)
+        return Locked(self.lock, acquired)
+
+    def release(self):
+        return self.lock.release()
+
+    def __enter__(self):
+        return self.acquire()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self.release()
+
+    @property
+    def locked(self):
+        return self.lock.locked()
+
+
+class Lock(LockWrapper):
+    def __init__(self):
+        super().__init__(threading.Lock)
+
+
+class RLock(LockWrapper):
+    def __init__(self):
+        super().__init__(threading.RLock)
+
+
+class Locked:
+    def __init__(self, lock, acquired):
+        self.lock = lock
+        self.acquired = acquired
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.acquired:
+            return self.lock.release()
+
+    def __getattr__(self, attr):
+        return getattr(self.lock, attr)
+
+    def __bool__(self):
+        return self.acquired
+
+
 @export
 class Timer:
     def __init__(self, func, interval=None):
@@ -74,57 +125,6 @@ class Timer:
     def canceled(self):
         with self.rlock:
             return not self.active and not self.expired
-
-
-class LockWrapper:
-    def __init__(self, lock_type):
-        self.lock = lock_type()
-
-    def acquire(self, blocking=True, timeout=-1):
-        acquired = self.lock.acquire(blocking=blocking, timeout=timeout)
-        return Locked(self.lock, acquired)
-
-    def release(self):
-        return self.lock.release()
-
-    def __enter__(self):
-        return self.acquire()
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        return self.release()
-
-    @property
-    def locked(self):
-        return self.lock.locked()
-
-
-class Lock(LockWrapper):
-    def __init__(self):
-        super().__init__(threading.Lock)
-
-
-class RLock(LockWrapper):
-    def __init__(self):
-        super().__init__(threading.RLock)
-
-
-class Locked:
-    def __init__(self, lock, acquired):
-        self.lock = lock
-        self.acquired = acquired
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.acquired:
-            return self.lock.release()
-
-    def __getattr__(self, attr):
-        return getattr(self.lock, attr)
-
-    def __bool__(self):
-        return self.acquired
 
 
 class Throttler:
