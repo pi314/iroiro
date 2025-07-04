@@ -141,10 +141,15 @@ def main():
             return '+'
     select_all.check = check
     def select_and_trigger_all(item, key):
-        item.menu.select_all()
-        for item in menu:
-           if not item.meta:
-                item.feedkey(warawara.KEY_SPACE)
+        # item.menu.select_all()
+        def task():
+            import time
+            for item in menu:
+                if not item.meta:
+                    item.feedkey(warawara.KEY_SPACE)
+                    item.menu.refresh()
+                    time.sleep(0.05)
+        item.menu.Thread(target=task).start()
     select_all.onkey(warawara.KEY_SPACE, select_and_trigger_all)
 
     unselect_all = menu.append('Unselect all', meta=True)

@@ -881,10 +881,9 @@ class MenuData:
         return f'MenuData({repr(self.dataset)})'
 
     def __setitem__(self, key, value):
+        self.dataset[key] = value
         if value is None:
             del self.dataset[key]
-        else:
-            self.dataset[key] = value
 
     def __getitem__(self, key):
         return self.dataset.get(key)
@@ -923,6 +922,7 @@ class MenuThread:
         self.menu.notify_start(self.thread)
 
         self.thread.start()
+        return self
 
     def is_alive(self):
         return self.thread and self.thread.is_alive()
