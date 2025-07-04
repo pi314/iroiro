@@ -8,12 +8,16 @@ export, __all__ = exporter()
 class LockWrapper:
     def __init__(self, lock_type):
         self.lock = lock_type()
+        self._locked = 0
 
     def acquire(self, blocking=True, timeout=-1):
         acquired = self.lock.acquire(blocking=blocking, timeout=timeout)
+        if acquired:
+            self._locked += 1
         return Locked(self.lock, acquired)
 
     def release(self):
+        self._locked -= 1
         return self.lock.release()
 
     def __enter__(self):
@@ -24,14 +28,18 @@ class LockWrapper:
 
     @property
     def locked(self):
+        if not hasattr(self.lock, 'locked'):
+            return self._locked
         return self.lock.locked()
 
 
+@export
 class Lock(LockWrapper):
     def __init__(self):
         super().__init__(threading.Lock)
 
 
+@export
 class RLock(LockWrapper):
     def __init__(self):
         super().__init__(threading.RLock)

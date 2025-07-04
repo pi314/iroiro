@@ -1,7 +1,6 @@
 import queue
 
 import functools
-import threading
 import unittest.mock
 
 from .lib_test_utils import *
