@@ -177,7 +177,7 @@ class Throttler:
             self.timer.cancel()
             return self.callback(*args, **kwargs)
 
-    def __call__(self, blocking=False, *args, **kwargs):
+    def __call__(self, blocking=False, args=None, kwargs=None):
         if blocking:
             return self.hipri(*args, **kwargs)
         else:

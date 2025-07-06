@@ -1271,7 +1271,7 @@ class Menu:
         self.pager.render()
 
     def refresh(self, force=False):
-        self._refresh_throttler(blocking=force, force=force)
+        self._refresh_throttler(blocking=force, args=[], kwargs={'force': force})
 
     def interact_loop(self):
         try:
