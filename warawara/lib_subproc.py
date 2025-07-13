@@ -178,7 +178,8 @@ class IntegerEvent(threading.Event):
 
 @export
 class command:
-    def __init__(self, cmd=None, *,
+    def __init__(self, cmd, *,
+                 cwd=None,
                  stdin=None, stdout=True, stderr=True,
                  encoding='utf8', rstrip='\r\n',
                  bufsize=-1,
@@ -205,6 +206,7 @@ class command:
         self.bufsize = bufsize
         self.rstrip = rstrip
 
+        self.cwd = cwd
         self.env = env
         self.proc = None
         self.thread = None
@@ -313,7 +315,7 @@ class command:
                         }
 
             self.proc = sub.Popen(
-                    self.cmd,
+                    self.cmd, cwd=self.cwd,
                     stdin=self.proc_stdin,
                     stdout=self.proc_stdout,
                     stderr=self.proc_stderr,
@@ -451,13 +453,14 @@ class command:
 
 
 @export
-def run(cmd=None, *,
+def run(cmd, *,
+        cwd=None,
         stdin=None, stdout=True, stderr=True,
         encoding='utf8', rstrip='\r\n',
         bufsize=-1,
         env=None,
         wait=True):
-    ret = command(cmd,
+    ret = command(cmd, cwd=cwd,
                   stdin=stdin, stdout=stdout, stderr=stderr,
                   encoding=encoding,
                   rstrip=rstrip, env=env)

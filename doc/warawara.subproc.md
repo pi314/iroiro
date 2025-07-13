@@ -25,7 +25,8 @@ It's like writing a pipeline with a lot of `awk`, `sed`, `grep`, etc, without le
 ### Parameters
 
 ```python
-command(self, cmd=None, *,
+command(self, cmd, *,
+        cwd=None,
         stdin=None, stdout=True, stderr=True,
         encoding='utf8', rstrip='\r\n',
         bufsize=-1,
@@ -49,6 +50,10 @@ command(self, cmd=None, *,
         +   Callable
             *   `lambda proc: ...`
             *   `[(lambda proc, *args: ...), 'bar', 'baz']` (a callable with arguments)
+
+*   `cwd` (default: `None`)
+    -   The working directory for the command to run.
+    -   Only works for external command, and is ignored if `cmd` is a `callable`.
 
 *   `stdin` (default: `None`)
     -   If `stdin` is `None` or `False`, the stream is closed.

@@ -201,9 +201,9 @@ class TestSubproc(TestCase):
         self.eq(p.returncode, 1)
 
     def test_invalid_cmd(self):
-        with self.raises(ValueError):
+        with self.raises(TypeError):
             p = command()
-        with self.raises(ValueError):
+        with self.raises(TypeError):
             p = run()
 
         for i in ([], True, 3, None, queue.Queue()):
