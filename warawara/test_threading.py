@@ -46,30 +46,10 @@ class TestLock(TestCase):
 
 
 class TestTimer(TestCase):
-    class MockThreadingTimer:
-        def __init__(self, interval, function, args=None, kwargs=None):
-            self.interval = interval
-            self.function = function
-            self.args = args
-            self.kwargs = kwargs
-            self.active = False
-
-        def start(self):
-            self.active = True
-
-        def cancel(self):
-            self.active = False
-
-        def join(self):
-            assert self.active
-            self.function(*self.args, **self.kwargs)
-
-    def mock_threading_timer(self, *args, **kwargs):
-        self.timer = self.MockThreadingTimer(*args, **kwargs)
-        return self.timer
-
     def test_timer_start_expire(self):
-        self.patch('threading.Timer', self.mock_threading_timer)
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
 
         checkpoint = self.checkpoint()
 
@@ -89,15 +69,18 @@ class TestTimer(TestCase):
         self.false(timer.canceled)
         checkpoint.check(False)
 
-        timer.join()
-        checkpoint.check(True)
+        import time
+        time.sleep(10)
+        checkpoint.wait()
         self.false(timer.active)
         self.true(timer.expired)
         self.true(timer.idle)
         self.false(timer.canceled)
 
     def test_timer_start_cancel(self):
-        self.patch('threading.Timer', self.mock_threading_timer)
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
 
         checkpoint = self.checkpoint()
 
@@ -125,7 +108,9 @@ class TestTimer(TestCase):
         self.true(timer.canceled)
 
     def test_timer_start_expire_cancel(self):
-        self.patch('threading.Timer', self.mock_threading_timer)
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
 
         checkpoint = self.checkpoint()
 
@@ -145,8 +130,9 @@ class TestTimer(TestCase):
         self.false(timer.canceled)
         checkpoint.check(False)
 
-        timer.join()
-        checkpoint.check(True)
+        import time
+        time.sleep(10)
+        checkpoint.wait()
         self.false(timer.active)
         self.true(timer.expired)
         self.true(timer.idle)
@@ -159,7 +145,9 @@ class TestTimer(TestCase):
         self.false(timer.canceled)
 
     def test_timer_start_start(self):
-        self.patch('threading.Timer', self.mock_threading_timer)
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
 
         checkpoint = self.checkpoint()
 
@@ -187,7 +175,9 @@ class TestTimer(TestCase):
         self.false(timer.canceled)
 
     def test_timer_idle_cancel(self):
-        self.patch('threading.Timer', self.mock_threading_timer)
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
 
         def foo(*args, **kwargs):
             pass
@@ -205,7 +195,9 @@ class TestTimer(TestCase):
         self.false(timer.canceled)
 
     def test_timer_join(self):
-        self.patch('threading.Timer', self.mock_threading_timer)
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
 
         checkpoint = self.checkpoint()
 
@@ -225,8 +217,9 @@ class TestTimer(TestCase):
         self.false(timer.canceled)
         checkpoint.check(False)
 
-        timer.join()
-        checkpoint.check(True)
+        import time
+        time.sleep(10)
+        checkpoint.wait()
         self.false(timer.active)
         self.true(timer.expired)
         self.true(timer.idle)
