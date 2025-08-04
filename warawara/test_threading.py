@@ -53,7 +53,6 @@ class TestTimer(TestCase):
             self.args = args
             self.kwargs = kwargs
             self.active = False
-            self.canceled = False
 
         def start(self):
             self.active = True

@@ -362,3 +362,90 @@ class FakeTerminal:
         self.ensure_cursor_pos()
 
         return True
+
+
+@export
+class FakeTime:
+    def __init__(self):
+        self.sys_time = 0
+        self.event_list = []
+
+        me = self
+        class FakeTimerWrapper(self.FakeTimer):
+            def __init__(s, *args, **kwargs):
+                super().__init__(me, *args, **kwargs)
+
+        self.FakeTimerWrapper = FakeTimerWrapper
+
+    def patch(self):
+        return (
+                ('time.time', self.time_time),
+                ('time.monotonic', self.time_time),
+                ('time.sleep', self.time_sleep),
+                ('threading.Timer', self.FakeTimerWrapper),
+                )
+
+    def time_time(self):
+        return self.sys_time
+
+    def time_sleep(self, secs):
+        if secs < 0:
+            raise ValueError('This Python implementation is not powerful enough to rewind time')
+
+        if secs == 0:
+            return
+
+        self.sys_time += secs
+        expired_list = []
+        waiting_list = []
+
+        for t, e in self.event_list:
+            if t <= self.sys_time:
+                expired_list.append((t, e))
+            else:
+                waiting_list.append((t, e))
+
+        self.event_list = waiting_list
+
+        for t, e in expired_list:
+            e.set()
+
+    def pin(self, interval, event):
+        self.event_list.append((self.sys_time + interval, event))
+        self.event_list.sort()
+
+    class FakeTimer:
+        def __init__(self, coordinator, interval, function, args=[], kwargs={}):
+            self.coordinator = coordinator
+            self.interval = interval
+            self.function = function
+            self.args = args
+            self.kwargs = kwargs
+            self.active = False
+
+            import threading
+            self.thread = threading.Thread(target=self.gogo, daemon=True)
+            self.expired = threading.Event()
+            self.canceled = False
+            self.finished = threading.Event()
+
+        def gogo(self):
+            self.expired.wait()
+            if self.canceled:
+                return
+            self.function(*self.args, **self.kwargs)
+            self.finished.set()
+
+        def start(self):
+            self.active = True
+            self.coordinator.pin(self.interval, self.expired)
+            self.thread.start()
+
+        def cancel(self):
+            self.active = False
+            self.canceled = True
+            self.finished.set()
+
+        def join(self):
+            assert self.active
+            self.finished.wait()
