@@ -144,7 +144,7 @@ class TestTimer(TestCase):
         self.true(timer.idle)
         self.false(timer.canceled)
 
-    def test_timer_start_start(self):
+    def test_timer_start_twice(self):
         fake_time = FakeTime()
         for name, func in fake_time.patch():
             self.patch(name, func)
@@ -217,8 +217,19 @@ class TestTimer(TestCase):
         self.false(timer.canceled)
         checkpoint.check(False)
 
-        import time
-        time.sleep(10)
+        e = threading.Event()
+        def move_time():
+            e.wait()
+            import time
+            for i in range(10):
+                time.sleep(i)
+
+        t = threading.Thread(target=move_time, daemon=True)
+        t.start()
+
+        e.set()
+        timer.join()
+        t.join()
         checkpoint.wait()
         self.false(timer.active)
         self.true(timer.expired)
