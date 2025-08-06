@@ -66,11 +66,13 @@ class Locked:
 
 @export
 class Timer:
-    def __init__(self, func, interval=None):
+    def __init__(self, func, interval=None, *, args=None, kwargs=None):
         self.func = func
         self.interval = interval
-        self.args = None
-        self.kwargs = None
+        self.args = args or []
+        self.kwargs = kwargs or {}
+        self.last_args = None
+        self.last_kwargs = None
         self.ret = None
 
         self.rlock = RLock()
@@ -84,19 +86,19 @@ class Timer:
             self.timer = None
             self.ret = self.func(*args, **kwargs)
 
-    def start(self, interval=None, args=None, kwargs=None):
+    def start(self, interval=None, *, args=None, kwargs=None):
         with self.rlock:
             if self.timer:
                 return False
 
-            self.args = args
-            self.kwargs = kwargs
+            self.last_args = args or self.args
+            self.last_kwargs = kwargs or self.kwargs
 
             self._expired.clear()
             self._canceled.clear()
             self.timer = threading.Timer(
                     interval or self.interval, self.callback,
-                    self.args or [], self.kwargs or {})
+                    self.last_args, self.last_kwargs)
             self.timer.start()
             return True
 
