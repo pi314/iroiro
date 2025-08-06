@@ -46,6 +46,37 @@ class TestLock(TestCase):
 
 
 class TestTimer(TestCase):
+    def check_status(self, timer, status):
+        self.true(getattr(timer, status))
+        self.check_consistency(timer)
+
+    def check_expired(self, timer, value):
+        self.eq(timer.expired, value)
+        self.check_consistency(timer)
+
+    def check_consistency(self, timer):
+        if timer.active:
+            self.false(timer.idle)
+            self.false(timer.expired)
+            self.false(timer.canceled)
+        else:
+            self.true(timer.idle or timer.expired or timer.canceled)
+
+        if timer.expired:
+            self.true(timer.idle)
+            self.false(timer.active)
+            self.false(timer.canceled)
+
+        if timer.canceled:
+            self.true(timer.idle)
+            self.false(timer.active)
+            self.false(timer.expired)
+
+        if timer.idle:
+            self.false(timer.active)
+
+        self.true(any([timer.active, timer.idle, timer.expired, timer.canceled]))
+
     def test_timer_start_expire(self):
         fake_time = FakeTime()
         for name, func in fake_time.patch():
@@ -57,25 +88,16 @@ class TestTimer(TestCase):
             checkpoint.set()
 
         timer = wara.Timer(foo, 10)
-        self.false(timer.active)
-        self.false(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'idle')
 
         timer.start(args=['wah'], kwargs={'kw': 'args'})
-        self.true(timer.active)
-        self.false(timer.expired)
-        self.false(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'active')
         checkpoint.check(False)
 
         import time
         time.sleep(10)
         checkpoint.wait()
-        self.false(timer.active)
-        self.true(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'expired')
 
     def test_timer_start_cancel(self):
         fake_time = FakeTime()
@@ -88,24 +110,15 @@ class TestTimer(TestCase):
             checkpoint.set()
 
         timer = wara.Timer(foo, 10)
-        self.false(timer.active)
-        self.false(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'idle')
 
         timer.start(args=['wah'], kwargs={'kw': 'args'})
-        self.true(timer.active)
-        self.false(timer.expired)
-        self.false(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'active')
         checkpoint.check(False)
 
         self.true(timer.cancel())
         checkpoint.check(False)
-        self.false(timer.active)
-        self.false(timer.expired)
-        self.true(timer.idle)
-        self.true(timer.canceled)
+        self.check_status(timer, 'canceled')
 
     def test_timer_start_expire_cancel(self):
         fake_time = FakeTime()
@@ -118,31 +131,19 @@ class TestTimer(TestCase):
             checkpoint.set()
 
         timer = wara.Timer(foo, 10)
-        self.false(timer.active)
-        self.false(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'idle')
 
         timer.start(args=['wah'], kwargs={'kw': 'args'})
-        self.true(timer.active)
-        self.false(timer.expired)
-        self.false(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'active')
         checkpoint.check(False)
 
         import time
         time.sleep(10)
         checkpoint.wait()
-        self.false(timer.active)
-        self.true(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'expired')
 
         self.false(timer.cancel())
-        self.false(timer.active)
-        self.true(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'expired')
 
     def test_timer_start_twice(self):
         fake_time = FakeTime()
@@ -155,24 +156,15 @@ class TestTimer(TestCase):
             checkpoint.set()
 
         timer = wara.Timer(foo, 10)
-        self.false(timer.active)
-        self.false(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'idle')
 
         timer.start(args=['wah'], kwargs={'kw': 'args'})
-        self.true(timer.active)
-        self.false(timer.expired)
-        self.false(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'active')
         checkpoint.check(False)
 
         res = timer.start(args=['wah'], kwargs={'kw': 'args'})
         self.false(res)
-        self.true(timer.active)
-        self.false(timer.expired)
-        self.false(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'active')
 
     def test_timer_idle_cancel(self):
         fake_time = FakeTime()
@@ -183,16 +175,10 @@ class TestTimer(TestCase):
             pass
 
         timer = wara.Timer(foo, 10)
-        self.false(timer.active)
-        self.false(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'idle')
 
         self.false(timer.cancel())
-        self.false(timer.active)
-        self.false(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'idle')
 
     def test_timer_join(self):
         fake_time = FakeTime()
@@ -205,16 +191,13 @@ class TestTimer(TestCase):
             checkpoint.set()
 
         timer = wara.Timer(foo, 10)
-        self.false(timer.active)
+        self.check_status(timer, 'idle')
         self.false(timer.expired)
         self.true(timer.idle)
         self.false(timer.canceled)
 
         timer.start(args=['wah'], kwargs={'kw': 'args'})
-        self.true(timer.active)
-        self.false(timer.expired)
-        self.false(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'active')
         checkpoint.check(False)
 
         e = threading.Event()
@@ -231,7 +214,4 @@ class TestTimer(TestCase):
         timer.join()
         t.join()
         checkpoint.wait()
-        self.false(timer.active)
-        self.true(timer.expired)
-        self.true(timer.idle)
-        self.false(timer.canceled)
+        self.check_status(timer, 'expired')
