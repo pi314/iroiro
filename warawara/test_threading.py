@@ -283,3 +283,62 @@ class TestTimer(TestCase):
         t.join()
         checkpoint.wait()
         self.check_status(timer, 'expired')
+
+
+class TestThrottler(TestCase):
+    def test_non_callable(self):
+        with self.raises(TypeError):
+            wara.threading.Throttler(False, 1)
+
+    def test_blocking_calls(self):
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
+        import time
+
+        record = []
+        def foo(*args, **kwargs):
+            record.append((time.time(), args, kwargs))
+
+        th = wara.threading.Throttler(foo, interval=1)
+
+        th(blocking=True)
+        th(blocking=True, args=['wah'], kwargs={'key': 'value'})
+        th(blocking=True, args=['wee'], kwargs={'key2': 'value2'})
+
+        self.eq(record, [
+            (0, tuple(), dict()),
+            (0, tuple(['wah']), {'key': 'value'}),
+            (0, tuple(['wee']), {'key2': 'value2'}),
+            ])
+
+    def test_non_blocking_calls(self):
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
+        import time
+
+        record = []
+        def foo(*args, **kwargs):
+            record.append((time.time(), args, kwargs))
+
+        th = wara.threading.Throttler(foo, interval=1)
+
+        th()
+
+        time.sleep(1)
+        th(args=['wah'], kwargs={'key': 'value'})
+
+        time.sleep(0.5)
+        th(args=['ignored'], kwargs={'ignored': 'ignored'})
+
+        time.sleep(0.4)
+        th(args=['wee'], kwargs={'key2': 'value2'})
+
+        time.sleep(0.1)
+
+        self.eq(record, [
+            (0, tuple(), dict()),
+            (1, tuple(['wah']), {'key': 'value'}),
+            (2, tuple(['wee']), {'key2': 'value2'}),
+            ])

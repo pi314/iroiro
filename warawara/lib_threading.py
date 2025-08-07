@@ -138,10 +138,13 @@ class Timer:
 
 class Throttler:
     def __init__(self, func, interval):
+        if not callable(func):
+            raise TypeError('func must be a callable')
+
         self.func = func
         self.interval = interval
 
-        self.timestamp = 0
+        self.timestamp = None
         self.timer = Timer(self.lopri)
 
         self.trtl_lock = Lock()
@@ -158,14 +161,18 @@ class Throttler:
             if not tl:
                 return False
 
-            # throttling: block simultaneous callers
+            # throttling: drop fast caller that is waiting for make up
             if self.timer.active:
-                return False
+                self.timer.cancel()
 
             # throttling: defer fast callers
-            delta = time.time() - self.timestamp
+            if self.timestamp is None:
+                delta = self.interval
+            else:
+                delta = time.time() - self.timestamp
+
             if delta < self.interval:
-                return self.timer.start(self.interval - delta, args, kwargs)
+                return self.timer.start(self.interval - delta, args=args, kwargs=kwargs)
 
             with self.main_lock.acquire(blocking=False) as ml:
                 if not ml:
@@ -179,7 +186,7 @@ class Throttler:
             self.timer.cancel()
             return self.callback(*args, **kwargs)
 
-    def __call__(self, blocking=False, args=None, kwargs=None):
+    def __call__(self, *, blocking=False, args=[], kwargs={}):
         if blocking:
             return self.hipri(*args, **kwargs)
         else:
