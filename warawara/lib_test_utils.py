@@ -399,20 +399,24 @@ class FakeTime:
         expired_list = []
         waiting_list = []
 
-        for t, e in self.event_list:
+        for t, poke, ack in self.event_list:
             if t <= self.sys_time:
-                expired_list.append((t, e))
+                dest = expired_list
             else:
-                waiting_list.append((t, e))
+                dest = waiting_list
+            dest.append((t, poke, ack))
 
         self.event_list = waiting_list
 
-        for t, e in expired_list:
-            e.set()
+        for _, poke, _ in expired_list:
+            poke.set()
 
-    def pin(self, interval, event):
-        self.event_list.append((self.sys_time + interval, event))
-        self.event_list.sort()
+        for _, _, ack in expired_list:
+            ack.wait()
+
+    def pin(self, interval, poke, ack):
+        self.event_list.append((self.sys_time + interval, poke, ack))
+        self.event_list.sort(key=lambda x: x[0])
 
     class FakeTimer:
         def __init__(self, coordinator, interval, function, args=[], kwargs={}):
@@ -429,16 +433,19 @@ class FakeTime:
             self.canceled = False
             self.finished = threading.Event()
 
+            self.poke = threading.Event()
+
         def gogo(self):
-            self.expired.wait()
+            self.poke.wait()
             if self.canceled:
                 return
+            self.expired.set()
             self.function(*self.args, **self.kwargs)
             self.finished.set()
 
         def start(self):
             self.active = True
-            self.coordinator.pin(self.interval, self.expired)
+            self.coordinator.pin(self.interval, self.poke, self.finished)
             self.thread.start()
 
         def cancel(self):
