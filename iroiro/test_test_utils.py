@@ -5,6 +5,75 @@ from .lib_test_utils import *
 import iroiro as iro
 
 
+class TestTestCase(TestCase):
+    def test_bridged_methods(self):
+        self.eq(self.almost_eq, self.assertAlmostEqual)
+        self.eq(self.ne, self.assertNotEqual)
+        self.eq(self.le, self.assertLessEqual)
+        self.eq(self.lt, self.assertLess)
+        self.eq(self.ge, self.assertGreaterEqual)
+        self.eq(self.gt, self.assertGreater)
+        self.eq(self.true, self.assertTrue)
+        self.eq(self.false, self.assertFalse)
+        self.eq(self.raises, self.assertRaises)
+
+    def test_isinstance(self):
+        self.isinstance(True, bool)
+        self.isinstance(3, int)
+        self.isinstance(3.1415926535897932384626433832795, float)
+
+    def test_list_diff_msg(self):
+        try:
+            self.eq([1, 2, 3], [1, 2, 3, 4])
+        except AssertionError as e:
+            self.eq(str(e),
+'''Lists not equal:
+[
+  1,
+  2,
+  3,
++ 4,
+]''')
+
+        try:
+            self.eq([1, 2, 3, 4], [1, 2, 3])
+        except AssertionError as e:
+            self.eq(str(e),
+'''Lists not equal:
+[
+  1,
+  2,
+  3,
+- 4,
+]''')
+
+        try:
+            self.eq([1, 2, 5, 4], [1, 2, 3, 4])
+        except AssertionError as e:
+            self.eq(str(e),
+'''Lists not equal:
+[
+  1,
+  2,
+- 5,
++ 3,
+  4,
+]''')
+
+        from collections import UserList
+        try:
+            self.eq([2, 3, 4], UserList([1, 2, 3, 4]))
+        except AssertionError as e:
+            self.eq(str(e),
+'''Lists not equal:
+[
++ 1,
+  2,
+  3,
+  4,
+]''')
+
+
 class TestRunInThread(TestCase):
     def test_run_in_thread(self):
         barrier = threading.Barrier(2)

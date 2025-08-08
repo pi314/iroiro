@@ -1,6 +1,8 @@
 import unittest
 import threading
 
+from collections import UserList
+
 
 from .internal_utils import exporter
 export, __all__ = exporter()
@@ -8,6 +10,9 @@ export, __all__ = exporter()
 
 from .lib_regex import rere
 from .lib_colors import color
+
+
+__unittest = True
 
 
 @export
@@ -42,7 +47,7 @@ class Checkpoint:
 class TestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.eq = self.assertEqual
+        self.almost_eq = self.assertAlmostEqual
         self.ne = self.assertNotEqual
         self.le = self.assertLessEqual
         self.lt = self.assertLess
@@ -51,6 +56,39 @@ class TestCase(unittest.TestCase):
         self.true = self.assertTrue
         self.false = self.assertFalse
         self.raises = self.assertRaises
+
+    def eq(self, first, second, msg=None):
+        if (not isinstance(first, (list, tuple, UserList)) or
+            not isinstance(second, (list, tuple, UserList)) or
+            (type(first) is tuple) != (type(second) is tuple) or
+            first == second):
+            return self.assertEqual(first, second, msg)
+
+        else:
+            from difflib import SequenceMatcher
+            m = SequenceMatcher(None, first, second, False)
+            msg = ['Lists not equal:']
+            msg.append('[')
+            for tag, i1, i2, j1, j2 in m.get_opcodes():
+                if tag == 'equal':
+                    ops = ((' ', first[i1:i2]),)
+                elif tag == 'insert':
+                    ops = (('+', second[j1:j2]),)
+                elif tag == 'delete':
+                    ops = (('-', first[i1:i2]),)
+                else: # tag == 'replace'
+                    ops = (
+                            ('-', first[i1:i2]),
+                            ('+', second[j1:j2])
+                            )
+                for deco, items in ops:
+                    msg += [f'{deco} {repr(item)},' for item in items]
+
+            msg.append(']')
+            raise AssertionError('\n'.join(msg))
+
+    def isinstance(self, first, second):
+        return self.true(isinstance(first, second))
 
     def checkpoint(self):
         return Checkpoint(self)
