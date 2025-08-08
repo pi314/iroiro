@@ -169,7 +169,7 @@ class Throttler:
         # throttling: block simultaneous callers
         with self.trtl_lock.acquire(blocking=False) as tl:
             if not tl:
-                return False
+                return None
 
             # throttling: drop fast caller that is waiting for make up
             if self.timer.active:
@@ -182,14 +182,14 @@ class Throttler:
                 delta = time.time() - self.timestamp
 
             if delta < self.interval:
-                return self.timer.start(self.interval - delta, args=args, kwargs=kwargs)
+                self.timer.start(self.interval - delta, args=args, kwargs=kwargs)
+                return self.timer
 
             with self.main_lock.acquire(blocking=False) as ml:
                 if not ml:
-                    return False
+                    return None
 
-                self.callback(*args, **kwargs)
-                return True
+                return self.callback(*args, **kwargs)
 
     def hipri(self, *args, **kwargs):
         with self.main_lock:

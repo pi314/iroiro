@@ -321,12 +321,18 @@ class TestThrottler(TestCase):
         record = []
         def foo(*args, **kwargs):
             record.append((time.time(), args, kwargs))
+            return args[0] if args else 'foo'
 
         th = wara.threading.Throttler(foo, interval=1)
 
-        th(blocking=True)
-        th(blocking=True, args=['wah'], kwargs={'key': 'value'})
-        th(blocking=True, args=['wee'], kwargs={'key2': 'value2'})
+        ret = th(blocking=True)
+        self.eq(ret, 'foo')
+
+        ret = th(blocking=True, args=['wah'], kwargs={'key': 'value'})
+        self.eq(ret, 'wah')
+
+        ret = th(blocking=True, args=['wee'], kwargs={'key2': 'value2'})
+        self.eq(ret, 'wee')
 
         self.eq(record, [
             (0, tuple(), dict()),
@@ -343,19 +349,26 @@ class TestThrottler(TestCase):
         record = []
         def foo(*args, **kwargs):
             record.append((time.time(), args, kwargs))
+            return args[0] if args else 'foo'
 
         th = wara.threading.Throttler(foo, interval=1)
 
-        th()
+        ret = th()
+        self.eq(ret, 'foo')
 
         time.sleep(1)
-        th(args=['wah'], kwargs={'key': 'value'})
+        ret = th(args=['wah'], kwargs={'key': 'value'})
+        self.eq(ret, 'wah')
 
         time.sleep(0.5)
-        th(args=['ignored'], kwargs={'ignored': 'ignored'})
+        ret = th(args=['ignored'], kwargs={'ignored': 'ignored'})
+        self.isinstance(ret, wara.Timer)
+        self.eq(ret.remaining, 0.5)
 
         time.sleep(0.4)
-        th(args=['wee'], kwargs={'key2': 'value2'})
+        ret = th(args=['wee'], kwargs={'key2': 'value2'})
+        self.isinstance(ret, wara.Timer)
+        self.almost_eq(ret.remaining, 0.1)
 
         time.sleep(0.1)
 
@@ -363,4 +376,65 @@ class TestThrottler(TestCase):
             (0, tuple(), dict()),
             (1, tuple(['wah']), {'key': 'value'}),
             (2, tuple(['wee']), {'key2': 'value2'}),
+            ])
+
+    def test_lopri_calls_compete(self):
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
+        import time
+        time.sleep(1)
+
+        barrier = threading.Barrier(2)
+
+        record = []
+        def foo(*args, **kwargs):
+            record.append((time.time(), args, kwargs))
+            barrier.wait()
+
+        th = wara.threading.Throttler(foo, interval=1)
+
+        t = threading.Thread(target=lambda:th(args=['first caller']), daemon=True)
+        t.start()
+
+        th(args=['fast caller'])
+        th(args=['fast caller2'])
+
+        barrier.wait()
+        t.join()
+
+        self.eq(record, [
+            (1, tuple(['first caller']), dict()),
+            ])
+
+    def test_lopri_and_hipri_calls_compete(self):
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
+        import time
+        time.sleep(1)
+
+        barrier = threading.Barrier(2)
+
+        record = []
+        def foo(*args, **kwargs):
+            record.append((time.time(), args, kwargs))
+            barrier.wait()
+
+        th = wara.threading.Throttler(foo, interval=1)
+
+        t = threading.Thread(target=lambda:th(blocking=True, args=['first caller']), daemon=True)
+        t.start()
+
+        ret = th(args=['fast caller'])
+        self.eq(ret, None)
+
+        ret = th(args=['fast caller2'])
+        self.eq(ret, None)
+
+        barrier.wait()
+        t.join()
+
+        self.eq(record, [
+            (1, tuple(['first caller']), dict()),
             ])
