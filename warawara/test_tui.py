@@ -1260,3 +1260,27 @@ class TestPager(TestCase):
         self.eq(list(p.text for p in pager.header), ['header1'])
         self.eq(list(p.text for p in pager), ['哇 0', '哇 1', '哇 2', '哇 3', '哇 4', '哇 5', '哇 6', '哇 7', '哇 8', '哇 9'])
         self.eq(list(p.text for p in pager.footer), ['footer4'])
+
+
+class TestMenuData(TestCase):
+    def test_basic(self):
+        import warawara
+        m = warawara.tui.MenuData()
+        m['key'] = 'value'
+        self.eq(m.key, 'value')
+
+        m.key = 42
+        self.eq(m['key'], 42)
+        self.eq(repr(m), "MenuData({'key': 42})")
+
+        del m.what
+        self.eq(repr(m), "MenuData({'key': 42})")
+
+        del m.key
+        self.eq(repr(m), 'MenuData({})')
+
+        m.key = 52
+        self.eq(repr(m), "MenuData({'key': 52})")
+
+        m.key = None
+        self.eq(repr(m), 'MenuData({})')
