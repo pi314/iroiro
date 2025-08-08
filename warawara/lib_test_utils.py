@@ -43,6 +43,7 @@ class TestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.eq = self.assertEqual
+        self.almost_eq = self.assertAlmostEqual
         self.ne = self.assertNotEqual
         self.le = self.assertLessEqual
         self.lt = self.assertLess
@@ -51,6 +52,9 @@ class TestCase(unittest.TestCase):
         self.true = self.assertTrue
         self.false = self.assertFalse
         self.raises = self.assertRaises
+
+    def isinstance(self, a, b):
+        self.true(isinstance(a, b))
 
     def checkpoint(self):
         return Checkpoint(self)
