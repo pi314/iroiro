@@ -284,6 +284,28 @@ class TestTimer(TestCase):
         checkpoint.wait()
         self.check_status(timer, 'expired')
 
+    def test_timer_remaing_time(self):
+        fake_time = FakeTime()
+        for name, func in fake_time.patch():
+            self.patch(name, func)
+        import time
+
+        checkpoint = self.checkpoint()
+        def foo():
+            checkpoint.set()
+
+        timer = wara.Timer(foo, 10)
+        self.eq(timer.remaining, None)
+
+        timer.start()
+        self.eq(timer.remaining, 10)
+
+        time.sleep(3.14)
+        self.eq(timer.remaining, 10 - 3.14)
+
+        time.sleep(7)
+        self.eq(timer.remaining, 0)
+
 
 class TestThrottler(TestCase):
     def test_non_callable(self):

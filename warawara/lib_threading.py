@@ -77,8 +77,16 @@ class Timer:
 
         self.rlock = RLock()
         self.timer = None
+        self.start_time = None
+        self.end_time = None
         self._expired = threading.Event()
         self._canceled = threading.Event()
+
+    @property
+    def remaining(self):
+        with self.rlock:
+            if self.end_time is not None:
+                return max(self.end_time - time.time(), 0)
 
     def callback(self, *args, **kwargs):
         with self.rlock:
@@ -99,6 +107,8 @@ class Timer:
             self.timer = threading.Timer(
                     interval or self.interval, self.callback,
                     self.last_args, self.last_kwargs)
+            self.start_time = time.time()
+            self.end_time = self.start_time + self.timer.interval
             self.timer.start()
             return True
 
