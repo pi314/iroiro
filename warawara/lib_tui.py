@@ -1,6 +1,6 @@
 import sys
 
-from .lib_itertools import zip_longest, flatten
+from .lib_itertools import zip_longest
 
 from .internal_utils import exporter
 export, __all__ = exporter()
