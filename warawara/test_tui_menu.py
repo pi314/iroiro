@@ -4,16 +4,25 @@ from .lib_test_utils import *
 class TestMenuData(TestCase):
     def test_basic(self):
         import warawara
-        m = warawara.tui.MenuData()
-        m['key'] = 'value'
-        self.eq(m.key, 'value')
+        data = warawara.tui.MenuData()
+        data['key'] = 'value'
+        self.eq(data.key, 'value')
 
-        m.key = 42
-        self.eq(m['key'], 42)
-        self.eq(repr(m), "MenuData({'key': 42})")
+        data.key = 42
+        self.eq(data['key'], 42)
+        self.eq(repr(data), "MenuData({'key': 42})")
 
-        del m.what
-        self.eq(repr(m), "MenuData({'key': 42})")
+        del data.what
+        self.eq(repr(data), "MenuData({'key': 42})")
+
+        del data.key
+        self.eq(repr(data), 'MenuData({})')
+
+        data.key = 52
+        self.eq(repr(data), "MenuData({'key': 52})")
+
+        data.key = None
+        self.eq(repr(data), 'MenuData({})')
 
         del m.key
         self.eq(repr(m), 'MenuData({})')
