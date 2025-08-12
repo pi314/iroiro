@@ -1,5 +1,7 @@
 import sys
 
+from collections import UserList
+
 from .lib_itertools import zip_longest
 
 from .internal_utils import exporter
@@ -1486,18 +1488,77 @@ class MenuCursor:
 
 
 class MenuKeyHandler:
+    class MenuKeySubHandlerList(UserList):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+
+        def __add__(self, other):
+            if isinstance(other, (list, tuple, UserList)):
+                handler_list = other
+            else:
+                handler_list = [other]
+
+            data = list(self.data)
+            for handler in handler_list:
+                if handler not in self.data:
+                    data.append(handler)
+            return type(self)(data)
+
+        def __iadd__(self, other):
+            self.data = (self + other).data
+            return self
+
+        def __sub__(self, other):
+            if isinstance(other, (list, tuple, UserList)):
+                handler_list = other
+            else:
+                handler_list = [other]
+
+            data = list(self.data)
+            for handler in handler_list:
+                try:
+                    data.remove(handler)
+                except:
+                    pass
+            return type(self)(data)
+
+        def __isub__(self, other):
+            self.data = (self - other).data
+            return self
+
     def __init__(self, parent):
         self.parent = parent
         self.clear()
+        self.MenuKeySubHandlerList = self.__class__.MenuKeySubHandlerList
 
     def clear(self):
-        self.handlers = {None: []}
+        self.handlers = {None: self.MenuKeySubHandlerList()}
 
-    def __iadd__(self, handler):
-        return self.bind(handler)
+    def __iadd__(self, other):
+        if isinstance(other, (list, tuple, UserList)):
+            return self.bind(*other)
+        else:
+            return self.bind(other)
 
-    def __isub__(self, handler):
-        return self.unbind(handler)
+    def __isub__(self, other):
+        if isinstance(other, (list, tuple, UserList)):
+            return self.unbind(*other)
+        else:
+            return self.unbind(other)
+
+    def __getitem__(self, key):
+        key = key_alias_table.get(key, key)
+        return self.handlers.get(key, self.MenuKeySubHandlerList())
+
+    def __setitem__(self, key, value):
+        key = key_alias_table.get(key, key)
+        try:
+            if not value:
+                del self.handlers[key]
+            else:
+                self.handlers[key] = self.MenuKeySubHandlerList() + value
+        except KeyError:
+            pass
 
     def __call__(self, *args):
         return self.bind(*args)
@@ -1514,10 +1575,9 @@ class MenuKeyHandler:
 
             for handler in handler_list:
                 if key not in self.handlers:
-                    self.handlers[key] = []
+                    self.handlers[key] = self.MenuKeySubHandlerList()
 
-                if handler not in self.handlers[key]:
-                    self.handlers[key].append(handler)
+                self.handlers[key] += handler
 
         return self
 
@@ -1531,11 +1591,11 @@ class MenuKeyHandler:
             if not handler_list:
                 self.handlers.pop(key)
 
+            if key not in self.handlers:
+                continue
+
             for handler in handler_list:
-                try:
-                    self.handlers[key].remove(handler)
-                except (KeyError, ValueError):
-                    pass
+                self.handlers[key] -= handler
 
         return self
 

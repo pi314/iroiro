@@ -24,11 +24,186 @@ class TestMenuData(TestCase):
         data.key = None
         self.eq(repr(data), 'MenuData({})')
 
-        del m.key
-        self.eq(repr(m), 'MenuData({})')
 
-        m.key = 52
-        self.eq(repr(m), "MenuData({'key': 52})")
+class TestMenuKeyHandler(TestCase):
+    def setUp(self):
+        import warawara
+        self.menu = warawara.Menu('title', ['Option 1', 'Option 2'])
 
-        m.key = None
-        self.eq(repr(m), 'MenuData({})')
+    def test_empty_handler(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(self.menu)
+
+        ret = handler.handle('a')
+        self.eq(ret, None)
+
+    def test_bind_without_handler(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(self.menu)
+
+        with self.raises(ValueError):
+            handler.bind('a', 'b', 'c')
+
+    def test_bind_unbind_handler(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(self.menu)
+
+        def foo(menu, key):
+            pass
+
+        def bar(menu, key):
+            pass
+
+        def baz(menu, key):
+            pass
+
+        handler.bind(foo, bar)
+        self.eq(handler[None], [foo, bar])
+
+        handler(baz)
+        self.eq(handler[None], [foo, bar, baz])
+
+        handler.unbind(foo, bar, baz)
+        self.eq(handler[None], [])
+
+        handler += foo
+        self.eq(handler[None], [foo])
+        handler += (bar, baz)
+        self.eq(handler[None], [foo, bar, baz])
+
+        handler -= bar
+        self.eq(handler[None], [foo, baz])
+        handler -= (baz, foo)
+        self.eq(handler[None], [])
+
+        handler['k'] += foo
+        self.eq(handler['k'], [foo])
+        handler['w'] += (bar, baz)
+        self.eq(handler['w'], [bar, baz])
+
+        handler['k'] = None
+        self.eq(handler['k'], [])
+        handler -= (baz, foo)
+        self.eq(handler['k'], [])
+        self.eq(handler['w'], [bar])
+        handler['w'] -= [bar]
+        self.eq(handler['w'], [])
+
+        handler['k'] = None
+        self.eq(handler['k'], [])
+
+        handler['k'] = foo
+        self.eq(handler['k'], [foo])
+        handler['k'] = bar
+        self.eq(handler['k'], [bar])
+        handler -= 'k'
+        self.eq(handler['k'], [])
+
+    def test_duplicated_bind(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(self.menu)
+
+        def foo(menu, key):
+            by.append(foo)
+
+        handler.bind(foo)
+        handler.bind(foo)
+
+        by = []
+        ret = handler.handle('f')
+        self.eq(by, [foo])
+
+    def test_key_bubbling(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(self.menu)
+
+        def foo(menu, key):
+            by.append(foo)
+            if key == 'f':
+                return foo
+
+        def bar(menu, key):
+            by.append(bar)
+            if key == 'r':
+                return bar
+
+        def baz(menu, key):
+            by.append(baz)
+            if key == 'z':
+                return baz
+
+        handler.bind(foo)
+
+        handler.bind('b', bar)
+        handler.bind('b', baz)
+
+        handler.bind('f', bar)
+        handler.bind('f', baz)
+
+        handler.bind('r', bar)
+
+        handler.bind('z', bar)
+        handler.bind('z', baz)
+
+        by = []
+        ret = handler.handle('w')
+        self.eq(ret, None)
+        self.eq(by, [foo])
+
+        by = []
+        ret = handler.handle('b')
+        self.eq(ret, None)
+        self.eq(by, [bar, baz, foo])
+
+        by = []
+        ret = handler.handle('f')
+        self.eq(ret, foo)
+        self.eq(by, [bar, baz, foo])
+
+        by = []
+        ret = handler.handle('r')
+        self.eq(ret, bar)
+        self.eq(by, [bar])
+
+        by = []
+        ret = handler.handle('z')
+        self.eq(ret, baz)
+        self.eq(by, [bar, baz])
+
+    def test_attach_to_menu_item(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(self.menu[0])
+
+        by = []
+        def foo(item, key):
+            by.append(foo)
+        handler += foo
+
+        handler.handle('f')
+        self.eq(by, [foo])
+
+    def test_attach_to_something_else(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(warawara)
+
+        by = []
+        def foo(key):
+            by.append(foo)
+            return key
+        handler += foo
+
+        ret = handler.handle('f')
+        self.eq(ret, 'f')
+        self.eq(by, [foo])
+
+    def test_empty_handler(self):
+        import warawara
+        handler = warawara.tui.MenuKeyHandler(self.menu)
+
+        by = []
+        def foo():
+            by.append(foo)
+        handler += foo
+
+        handler.handle('f')
+        self.eq(by, [foo])
