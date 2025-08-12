@@ -1,6 +1,8 @@
 import unittest
 import threading
 
+from collections import UserList
+
 
 from .internal_utils import exporter
 export, __all__ = exporter()
@@ -56,9 +58,9 @@ class TestCase(unittest.TestCase):
         self.raises = self.assertRaises
 
     def eq(self, first, second, msg=None):
-        if (not isinstance(first, (list, tuple)) or
-            not isinstance(second, (list, tuple)) or
-            type(first) is not type(second) or
+        if (not isinstance(first, (list, tuple, UserList)) or
+            not isinstance(second, (list, tuple, UserList)) or
+            (type(first) is tuple) != (type(second) is tuple) or
             first == second):
             return self.assertEqual(first, second, msg)
 

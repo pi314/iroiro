@@ -55,8 +55,9 @@ class TestTestCase(TestCase):
   4,
 ]''')
 
+        from collections import UserList
         try:
-            self.eq([2, 3, 4], [1, 2, 3, 4])
+            self.eq([2, 3, 4], UserList([1, 2, 3, 4]))
         except AssertionError as e:
             self.eq(str(e),
 '''Lists not equal:
