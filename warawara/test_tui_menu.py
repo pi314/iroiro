@@ -196,7 +196,7 @@ class TestMenuKeyHandler(TestCase):
         self.eq(ret, 'f')
         self.eq(by, [foo])
 
-    def test_empty_handler(self):
+    def test_handler_without_args(self):
         import warawara
         handler = warawara.tui.MenuKeyHandler(self.menu)
 
