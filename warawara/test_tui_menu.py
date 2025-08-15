@@ -25,6 +25,72 @@ class TestMenuData(TestCase):
         self.eq(repr(data), 'MenuData({})')
 
 
+class TestMenuCursor(TestCase):
+    def setUp(self):
+        import warawara
+        self.menu = warawara.Menu('title', ['Option 1', 'Option 2', 'Option 3'])
+
+    def test_repr(self):
+        c = self.menu.cursor
+        self.eq(repr(self.menu.cursor), f'MenuCursor(index={c.index}, wrap={c.wrap})')
+
+    def test_str(self):
+        self.eq(str(self.menu.cursor), '>')
+
+    def test_add_sub(self):
+        import warawara
+        c = self.menu.cursor
+        self.eq(c, 0)
+
+        c += 1
+        self.eq(c, 1)
+
+        c += 1
+        self.eq(c, 2)
+
+        c += 10
+        self.eq(c, 2)
+
+        c -= 100
+        self.eq(c, 0)
+
+        c.to(1 + c)
+        self.eq(c, 1)
+
+        c.to(1 - c)
+        self.eq(c, 0)
+
+        c.to(1)
+        self.ne(c, 0)
+        self.gt(c, 0)
+        self.ge(c, 0)
+        self.ge(c, 1)
+        self.eq(c, 1)
+        self.le(c, 1)
+        self.le(c, 2)
+        self.lt(c, 2)
+        self.ne(c, 2)
+
+        c.up()
+        self.eq(c, 0)
+
+        c.down()
+        c.down()
+        self.eq(c, 2)
+
+        c.to(self.menu[1])
+        self.ne(c, self.menu[0])
+        self.gt(c, self.menu[0])
+        self.ge(c, self.menu[0])
+        self.ge(c, self.menu[1])
+        self.eq(c, self.menu[1])
+        self.le(c, self.menu[1])
+        self.le(c, self.menu[2])
+        self.lt(c, self.menu[2])
+        self.ne(c, self.menu[2])
+        self.eq(c.text, self.menu[1].text)
+
+
 class TestMenuKeyHandler(TestCase):
     def setUp(self):
         import warawara
