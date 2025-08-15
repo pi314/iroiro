@@ -1205,17 +1205,20 @@ class Menu:
         else:
             index = index
 
-        if self.pager[int(self.cursor)].visible:
-            return
+        try:
+            if self.pager[int(self.cursor)].visible:
+                return
 
-        if self.cursor < self.pager.scroll:
-            self.pager.scroll = int(self.cursor)
-            return
+            if self.cursor < self.pager.scroll:
+                self.pager.scroll = int(self.cursor)
+                return
 
-        for i in range(int(self.cursor), 0, -1):
-            if self.pager[i].visible:
-                self.pager.scroll += int(self.cursor) - i
-                break
+            for i in range(int(self.cursor), 0, -1):
+                if self.pager[i].visible:
+                    self.pager.scroll += int(self.cursor) - i
+                    break
+        except IndexError:
+            return
 
     def pull_cursor(self):
         if self.pager[int(self.cursor)].visible:
