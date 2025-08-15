@@ -1311,28 +1311,7 @@ class Menu:
             self._threads.pop(0)
 
 
-class MenuItem:
-    def __init__(self, menu, meta, text, cursor, checkbox):
-        self.menu = menu
-        self.meta = meta
-        self.text = str(text)
-        self.selected = False
-        self.data = MenuData()
-        self.format = None
-
-        self.cursor_symbol = cursor
-        self.check, self.box = Menu.parse_checkbox(checkbox)
-        if self.meta:
-            if not self.check:
-                self.check = '*'
-            if not self.box:
-                self.box = '{}'
-
-        self._onkey = MenuKeyHandler(self)
-
-    def __repr__(self):
-        return f'MenuItem(index={self.index}, text={self.text})'
-
+class MenuItemRef:
     def __cmp__(self, other):
         a = self.index
         if isinstance(other, MenuItem) and other.menu is self.menu:
@@ -1358,6 +1337,29 @@ class MenuItem:
 
     def __ge__(self, other):
         return self.__cmp__(other) >= 0
+
+
+class MenuItem(MenuItemRef):
+    def __init__(self, menu, meta, text, cursor, checkbox):
+        self.menu = menu
+        self.meta = meta
+        self.text = str(text)
+        self.selected = False
+        self.data = MenuData()
+        self.format = None
+
+        self.cursor_symbol = cursor
+        self.check, self.box = Menu.parse_checkbox(checkbox)
+        if self.meta:
+            if not self.check:
+                self.check = '*'
+            if not self.box:
+                self.box = '{}'
+
+        self._onkey = MenuKeyHandler(self)
+
+    def __repr__(self):
+        return f'MenuItem(index={self.index}, text={self.text})'
 
     @property
     def onkey(self):
@@ -1394,7 +1396,7 @@ class MenuItem:
         return self.onkey.handle(key)
 
 
-class MenuCursor:
+class MenuCursor(MenuItemRef):
     def __init__(self, menu, *, wrap=False):
         self.menu = menu
         self.wrap = wrap
@@ -1428,32 +1430,6 @@ class MenuCursor:
     def __isub__(self, other):
         self.to(self - other)
         return self
-
-    def __cmp__(self, other):
-        a = self.index
-        if isinstance(other, MenuItem) and other.menu is self.menu:
-            b = other.index
-        else:
-            b = other
-        return (a > b) - (a < b)
-
-    def __lt__(self, other):
-        return self.__cmp__(other) < 0
-
-    def __le__(self, other):
-        return self.__cmp__(other) <= 0
-
-    def __eq__(self, other):
-        return self.__cmp__(other) == 0
-
-    def __ne__(self, other):
-        return self.__cmp__(other) != 0
-
-    def __gt__(self, other):
-        return self.__cmp__(other) > 0
-
-    def __ge__(self, other):
-        return self.__cmp__(other) >= 0
 
     def __getattr__(self, attr):
         item = self.menu[self.index]
