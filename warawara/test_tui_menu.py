@@ -37,8 +37,7 @@ class TestMenuCursor(TestCase):
     def test_str(self):
         self.eq(str(self.menu.cursor), '>')
 
-    def test_add_sub(self):
-        import warawara
+    def test_add_sub_to(self):
         c = self.menu.cursor
         self.eq(c, 0)
 
@@ -88,7 +87,39 @@ class TestMenuCursor(TestCase):
         self.le(c, self.menu[2])
         self.lt(c, self.menu[2])
         self.ne(c, self.menu[2])
-        self.eq(c.text, self.menu[1].text)
+        self.eq(c.text, 'Option 2')
+
+    def test_up_down_wrap(self):
+        c = self.menu.cursor
+
+        c.wrap = True
+        c.to(31)
+        self.eq(c, 1)
+
+        c.down()
+        self.eq(c, 2)
+
+        c.down()
+        self.eq(c, 0)
+
+        c.up()
+        self.eq(c, 2)
+
+    def test_to_diff_menu(self):
+        import warawara
+        other_menu = warawara.Menu('title', ['Option 1', 'Option 2', 'Option 3'])
+
+        with self.raises(ValueError):
+            self.menu.cursor.to(other_menu[1])
+
+    def test_attr(self):
+        c = self.menu.cursor
+
+        c.to(1)
+        self.eq(c.text, 'Option 2')
+
+        with self.raises(AttributeError):
+            c.bau
 
 
 class TestMenuKeyHandler(TestCase):

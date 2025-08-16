@@ -1437,10 +1437,6 @@ class MenuCursor(MenuItemRef):
             return getattr(item, attr)
         raise AttributeError(attr)
 
-    @property
-    def text(self):
-        return self.menu[self.index].text
-
     def cal_index(self, value):
         if isinstance(value, MenuItem):
             if value.menu is not self.menu:
