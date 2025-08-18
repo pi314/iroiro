@@ -304,3 +304,34 @@ class TestMenuKeyHandler(TestCase):
 
         handler.handle('f')
         self.eq(by, [foo])
+
+
+class TestMenuItem(TestCase):
+    def setUp(self):
+        import warawara
+        self.menu = warawara.Menu('title', ['Option 1', 'Option 2', 'Option 3'])
+
+    def test_repr(self):
+        self.eq(repr(self.menu[0]), f"MenuItem(index=0, text='Option 1')")
+
+    def test_index(self):
+        for i in range(len(self.menu)):
+            self.eq(self.menu[i].index, i)
+
+    def test_select_unselect_toggle(self):
+        i = self.menu[1]
+        self.eq(i.selected, False)
+        i.select()
+        self.eq(i.selected, True)
+        i.unselect()
+        self.eq(i.selected, False)
+        i.toggle()
+        self.eq(i.selected, True)
+
+    def test_moveto(self):
+        i = self.menu[1]
+        self.eq(i.index, 1)
+        i.moveto(2)
+        self.eq(i.index, 2)
+        i.moveto(0)
+        self.eq(i.index, 0)

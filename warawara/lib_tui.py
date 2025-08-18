@@ -1359,7 +1359,7 @@ class MenuItem(MenuItemRef):
         self._onkey = MenuKeyHandler(self)
 
     def __repr__(self):
-        return f'MenuItem(index={self.index}, text={self.text})'
+        return f'MenuItem(index={self.index}, text={repr(self.text)})'
 
     @property
     def onkey(self):
