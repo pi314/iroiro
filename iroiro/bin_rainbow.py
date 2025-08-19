@@ -141,7 +141,10 @@ def expand_macro_all():
 
     for name in lib_colors.names:
         c = parse_target(name)
-        ret[c.index][1].append(name)
+        if hasattr(c, 'index'):
+            ret[c.index][1].append(name)
+        else:
+            ret.append((c, [name]))
 
     return ret
 
