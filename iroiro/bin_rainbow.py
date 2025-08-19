@@ -198,13 +198,14 @@ def main():
                          'or produce ' + colorful + ' strips/tiles to fill the screen.'),
             epilog=textwrap.dedent('''
                     Example usages:
-                    $ {prog}
-                    $ {prog} all
-                    $ {prog} named --grep orange --hex
-                    $ {prog} FFD700 --rgb
-                    $ {prog} --tile --lines=2 --cols=8 salmon white
-                    $ {prog} --gradient 00AFFF FFAF00
-                    '''.strip('\n')).format(prog=prog),
+                    {s} {prog}
+                    {s} {prog} all
+                    {s} {prog} all --sort svh
+                    {s} {prog} named --grep orange --hex
+                    {s} {prog} FFD700 --rgb
+                    {s} {prog} --tile --lines=2 --cols=8 salmon white
+                    {s} {prog} --gradient 00AFFF FFAF00
+                    '''.strip('\n')).format(prog=prog, s=lib_colors.murasaki('$')),
             allow_abbrev=False, add_help=False,
             formatter_class=argparse.RawTextHelpFormatter)
 
@@ -231,14 +232,20 @@ This argument can be specified multiple times for multiple keywords''')
                         action='append_const', const='hsv',
                         help='Show HSV value in 3-tuple')
 
+    def SortKey(arg):
+        if arg in ('index', 'name', 'rgb', 'hsv'):
+            return arg
+        if all(ch in 'rgbRGBhsvHSVni' for ch in arg):
+            return arg
+        raise ValueError(arg)
     parser.add_argument('--sort',
-                        nargs='?', choices=['index', 'name', 'rgb', 'hue', 'no'], const='index',
-                        default='no',
-                        help='Sort the output by the specified attribute')
+                        nargs='?', type=SortKey, const='index', metavar='key',
+                        default='',
+                        help='Sort output by the specified attribute.\nAvailable keys: index, name, rgb, hue, [rgbRGBhsvHSVni]')
 
     parser.add_argument('-r', '--reverse',
                         action='store_true',
-                        help='''Reverse the output sequence''')
+                        help='Reverse output sequence')
 
     class YesNoToBoolOption(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
@@ -339,7 +346,7 @@ def main_list(args):
             else:
                 line.append('(?)')
 
-        expanded = [(g, color_text(g)) for g in lib_colors.gradient(src, dst, n, reverse=args.reverse, clockwise=args.clockwise)]
+        expanded = [(g, color_text(g)) for g in lib_colors.gradient(src, dst, n, clockwise=args.clockwise)]
 
     else:
         # argument handling for not gradient
@@ -407,6 +414,26 @@ def main_list(args):
             if isinstance(x, lib_colors.Color256):
                 return x.to_rgb().to_hsv()
         expanded.sort(key=lambda x: to_hsv(x[0]).h)
+    elif all(ch in 'rgbRGBhsvHSVni' for ch in args.sort):
+        def key(x):
+            ret = []
+            for ch in args.sort:
+                try:
+                    if ch == 'n':
+                        ret.append(x.name)
+                    elif ch == 'i':
+                        ret.append(x.index)
+                    else:
+                        ret.append(getattr(x, ch))
+                except AttributeError:
+                    if ch in 'rgbRGB':
+                        ret.append(getattr(x.to_rgb(), ch))
+                    if ch in 'hsvHSV':
+                        ret.append(getattr(x.to_hsv(), ch))
+                    if ch == 'i':
+                        ret.append(int(x))
+            return ret
+        expanded.sort(key=lambda x: key(x[0]))
 
     inventory = []
     def stage(color, name):
@@ -458,7 +485,7 @@ def main_list(args):
             c = getattr(lib_colors, name).index
             aliases[c].append(name)
 
-    for this_color, names in inventory:
+    for this_color, names in inventory[::(-1 if args.reverse else 1)]:
         line = []
         rgb = this_color if isinstance(this_color, lib_colors.ColorRGB) else this_color.to_rgb()
         hsv = rgb.to_hsv()
