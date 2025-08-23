@@ -66,7 +66,7 @@ class TestBinIroiro(TestCase):
 
     def test_bin_iroiro_recursion_error(self):
         with self.raises(SystemExit):
-            sys.argv = ['iroiro', 'iro', 'iro', 'iro']
+            sys.argv = ['iroiro', 'iroiro', 'iroiro', 'iroiro']
             iro.bin.iroiro.main()
 
         self.true('RecursionError' in '\n'.join(self.stderr))
