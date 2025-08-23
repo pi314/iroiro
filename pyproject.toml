@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 
 [project]
-name = "warawara"
+name = "iroiro"
 dynamic = ["version"]
 authors = [
   { name="Cychih", email="michael66230@gmail.com" },
@@ -25,24 +25,24 @@ classifiers = [
 
 
 [tool.hatch.version]
-path = "warawara/__init__.py"
+path = "iroiro/__init__.py"
 
 
 [project.scripts]
-wara = "warawara:bin.wara.main"
-palette = "warawara:bin.palette.main"
-rainbow = "warawara:bin.rainbow.main"
-sponge = "warawara:bin.sponge.main"
-ntfy = "warawara:bin.ntfy.main"
+iroiro = "iroiro:bin.iro.main"
+palette = "iroiro:bin.palette.main"
+rainbow = "iroiro:bin.rainbow.main"
+sponge = "iroiro:bin.sponge.main"
+ntfy = "iroiro:bin.ntfy.main"
 
 
 [project.urls]
-Homepage = "https://github.com/pi314/warawara"
+Homepage = "https://github.com/pi314/iroiro"
 
 
 [tool.coverage.run]
 branch = true
-source = ["warawara/"]
+source = ["iroiro/"]
 command_line = "-m unittest --verbose"
 
 
