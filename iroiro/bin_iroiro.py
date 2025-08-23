@@ -12,7 +12,7 @@ def main():
 
     arg_idx = None
     for idx, arg in enumerate(sys.argv):
-        if arg != 'wara':
+        if arg != 'iro':
             arg_idx = idx
             break
 

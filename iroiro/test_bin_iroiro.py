@@ -4,7 +4,7 @@ import unittest.mock
 
 from .lib_test_utils import *
 
-import warawara as wara
+import iroiro as iro
 
 
 class TestBinWara(TestCase):
@@ -30,11 +30,11 @@ class TestBinWara(TestCase):
                 for args, kwargs in self.prints
                 if kwargs.get('file') == sys.stderr]
 
-    def test_bin_wara(self):
-        # Run 'warawara' and check output
+    def test_bin_iroiro(self):
+        # Run 'iroiro' and check output
         with self.raises(SystemExit):
-            sys.argv = ['warawara']
-            wara.bin.wara.main()
+            sys.argv = ['iroiro']
+            iro.bin.iroiro.main()
 
         modules = self.stdout
 
@@ -44,29 +44,29 @@ class TestBinWara(TestCase):
                 map(
                     lambda x: re.fullmatch(r'bin_(\w+).py', x).group(1),
                     filter(lambda x: x.startswith('bin') and x.endswith('.py'),
-                           os.listdir('warawara'))
+                           os.listdir('iroiro'))
                     )
                 )
         self.eq(sorted(modules), sorted(files))
 
-    def test_bin_wara_subcmd_rainbow(self):
+    def test_bin_iroiro_subcmd_rainbow(self):
         with self.raises(SystemExit):
-            sys.argv = ['warawara', 'rainbow']
-            wara.bin.wara.main()
+            sys.argv = ['iroiro', 'rainbow']
+            iro.bin.iroiro.main()
 
-        sys.argv = ['warawara', 'rainbow', 'murasaki']
-        wara.bin.wara.main()
+        sys.argv = ['iroiro', 'rainbow', 'murasaki']
+        iro.bin.iroiro.main()
 
-    def test_bin_wara_subcmd_unknown(self):
+    def test_bin_iroiro_subcmd_unknown(self):
         with self.raises(SystemExit):
-            sys.argv = ['warawara', 'wow']
-            wara.bin.wara.main()
+            sys.argv = ['iroiro', 'wow']
+            iro.bin.iroiro.main()
 
         self.true('Unknown' in '\n'.join(self.stderr))
 
-    def test_bin_wara_recursion_error(self):
+    def test_bin_iroiro_recursion_error(self):
         with self.raises(SystemExit):
-            sys.argv = ['warawara', 'wara', 'wara', 'wara']
-            wara.bin.wara.main()
+            sys.argv = ['iroiro', 'iro', 'iro', 'iro']
+            iro.bin.iroiro.main()
 
         self.true('RecursionError' in '\n'.join(self.stderr))

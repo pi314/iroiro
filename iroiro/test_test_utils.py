@@ -2,7 +2,7 @@ import threading
 
 from .lib_test_utils import *
 
-import warawara as wara
+import iroiro as iro
 
 class TestRunInThread(TestCase):
     def test_run_in_thread(self):
@@ -35,7 +35,7 @@ class TestRunInThread(TestCase):
 
 class TestCheckPoint(TestCase):
     def test_checkpoint(self):
-        Checkpoint = wara.Checkpoint
+        Checkpoint = iro.Checkpoint
 
         checkpoint = Checkpoint(self)
 

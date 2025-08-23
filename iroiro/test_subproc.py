@@ -3,10 +3,10 @@ import queue
 
 from .lib_test_utils import *
 
-from warawara import *
+from iroiro import *
 
-import warawara
-stream = warawara.subproc.stream
+import iroiro
+stream = iroiro.subproc.stream
 
 
 def queue_to_list(Q):
@@ -26,8 +26,8 @@ class TestEventBroadcaster(TestCase):
         def handler2(arg):
             data2.append(arg)
 
-        import warawara
-        hub = warawara.subproc.EventBroadcaster()
+        import iroiro
+        hub = iroiro.subproc.EventBroadcaster()
         hub.broadcast('...')
 
         hub += handler1

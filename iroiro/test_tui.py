@@ -8,7 +8,7 @@ from collections import namedtuple
 
 from .lib_test_utils import *
 
-from warawara import *
+from iroiro import *
 
 
 class TestTypesettingUtils(TestCase):
@@ -233,7 +233,7 @@ class TestThreadedSpinner(TestCase):
 
     def test_context_manager(self):
         spinner = ThreadedSpinner()
-        spinner.print_function = lambda *args, **kwarags: None
+        spinner.print_function = lambda *args, **kirogs: None
         with spinner:
             with spinner:
                 spinner.start()

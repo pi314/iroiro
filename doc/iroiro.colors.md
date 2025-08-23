@@ -1,8 +1,8 @@
-# warawara.colors
+# iroiro.colors
 
-This document describes the API set provided by `warawara.colors`.
+This document describes the API set provided by `iroiro.colors`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## `color()`
@@ -295,8 +295,8 @@ assert decolor(cs) == s
 
 ## `names`
 
-A list of named colors, that are pre-defined by warawara and could be accessed
-with `warawara.<name>`.
+A list of named colors, that are pre-defined by iroiro and could be accessed
+with `iroiro.<name>`.
 
 The list was taken from
 [W3C CSS Color Module Level 3, 4.3. Extended color keywords](https://www.w3.org/TR/css-color-3/#svg-color),
@@ -479,8 +479,8 @@ gradient(A, B, N=None, reverse=False, clockwise=None)
 
 __Examples__
 ```python
-salmon = color('#FF875F') # or warawara.salmon
-white = color('#FFFFFF')  # or warawara.white
+salmon = color('#FF875F') # or iroiro.salmon
+white = color('#FFFFFF')  # or iroiro.white
 g = gradient(salmon, white, 4) # [#FF875F, #FFAF94, #FFD7CA, #FFFFFF]
 ```
 

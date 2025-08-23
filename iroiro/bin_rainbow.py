@@ -191,7 +191,7 @@ def main():
             )
     parser = argparse.ArgumentParser(
             prog=prog,
-            description=('Query pre-defined colors from warawara, ' +
+            description=('Query pre-defined colors from iroiro, ' +
                          'or produce ' + colorful + ' strips/tiles to fill the screen.'),
             epilog=textwrap.dedent('''
                     Example usages:
@@ -479,7 +479,7 @@ def main_list(args):
             elif val_fmt == 'hsv':
                 line.append('(@{:>3}, {:>3}%, {:>3}%)'.format(*hsv.HSV))
 
-        line.append(paint(fg=this_color, bg=this_color)('warawara'))
+        line.append(paint(fg=this_color, bg=this_color)('iroiro'))
 
         line.append(', '.join(names))
 

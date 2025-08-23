@@ -1,8 +1,8 @@
-# warawara.regex
+# iroiro.regex
 
-This document describes the API set provided by `warawara.regex`.
+This document describes the API set provided by `iroiro.regex`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## Class `rere`
@@ -16,9 +16,9 @@ rere(text)
 
 __Examples__
 ```python
-rr = rere('wara wa ra')
+rr = rere('iro i ro')
 rr.match(r'^(\w+) (\w+) (\w+)$')
-assert rr.groups() == ('wara', 'wa', 'ra')
+assert rr.groups() == ('iro', 'i', 'ro')
 ```
 
 `rere.sub()` and other methods are directly relayed to `re` module.

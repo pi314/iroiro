@@ -1,8 +1,8 @@
-# warawara.subproc
+# iroiro.subproc
 
-This document describes the API set provided by `warawara.subproc`.
+This document describes the API set provided by `iroiro.subproc`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## Class `command()`

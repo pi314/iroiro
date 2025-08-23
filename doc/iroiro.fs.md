@@ -1,9 +1,8 @@
-# warawara.fs
+# iroiro.fs
 
+This document describes the API set provided by `iroiro.fs`.
 
-This document describes the API set provided by `warawara.fs`.
-
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## `open()`
@@ -33,13 +32,13 @@ in addition it provides the following methods for convenience:
 
 __Examples__
 ```python
-import warawara
+import iroiro
 
-with warawara.open(path, 'w') as f:
+with iroiro.open(path, 'w') as f:
     f.writelines(['a', 'b', 'c'])
     f.writeline('d')
 
-with warawara.open(path) as f:
+with iroiro.open(path) as f:
     assert f.readlines() == ['a', 'b', 'c', 'd']
 ```
 
@@ -62,7 +61,7 @@ This function was made for sorting ``os.listdir()`` with a slightly better resul
 
 __Examples__
 ```python
-assert wara.natsorted([
+assert iro.natsorted([
         'apple1',
         'apple10',
         'banana10',

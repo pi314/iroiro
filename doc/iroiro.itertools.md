@@ -1,8 +1,8 @@
-# warawara.itertools
+# iroiro.itertools
 
-This document describes the API set provided by `warawara.itertools`.
+This document describes the API set provided by `iroiro.itertools`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## `is_iterable(obj)`
@@ -12,7 +12,7 @@ Returns `True` if `obj` is iterable and `False` otherwise.
 __Examples__
 ```python
 assert is_iterable([])
-assert is_iterable("warawara")
+assert is_iterable("iroiro")
 assert not is_iterable(3)
 ```
 
@@ -28,7 +28,7 @@ __Examples__
 assert unwrap([[[1, 2, 3]]]) == [1, 2, 3]
 assert unwrap([[True]]) == True
 assert unwrap(3) == 3
-assert unwrap('warawara') == 'warawara'
+assert unwrap('iroiro') == 'iroiro'
 ```
 
 
@@ -63,7 +63,7 @@ assert list(lookahead([1, 2, 3, 4, 5])) == [
 
 ## `zip_longest(*iterables, fillvalues=None)`
 
-Similar to standard `itertools.zip_longest()`, but warawara version supports
+Similar to standard `itertools.zip_longest()`, but iroiro version supports
 setting `fillvalue` for each iterable.
 
 If `fillvalues` is not a `tuple` or a `list`, the value is duplicated for each iterable.

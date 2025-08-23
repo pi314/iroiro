@@ -1,8 +1,8 @@
-# warawara.math
+# iroiro.math
 
-This document describes the API set provided by `warawara.math`.
+This document describes the API set provided by `iroiro.math`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## `is_uint8(i)`

@@ -9,14 +9,14 @@ class TestInternalUtils(TestCase):
 
         self.eq(uualluu, [])
 
-        export('wara')
-        self.eq(uualluu, ['wara'])
+        export('iro')
+        self.eq(uualluu, ['iro'])
 
         @export
         def test_func():
             pass
 
-        self.eq(uualluu, ['wara', 'test_func'])
+        self.eq(uualluu, ['iro', 'test_func'])
 
         export()
-        self.eq(uualluu, ['wara', 'test_func'])
+        self.eq(uualluu, ['iro', 'test_func'])

@@ -1,8 +1,8 @@
-# warawara.tui
+# iroiro.tui
 
-This document describes the API set provided by `warawara.tui`.
+This document describes the API set provided by `iroiro.tui`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## `strwidth()`
@@ -143,21 +143,21 @@ user_input = prompt('Input anything to continue>')
 
 If `options` is specified, user is prompted to choose one from it:
 ```python
-yn = prompt('Do you like warawara, or do you not like it?', ('yes', 'no'))
+yn = prompt('Do you like iroiro, or do you not like it?', ('yes', 'no'))
 print("You've replied:", yn)
 ```
 User is prompted with a message like this (`_` represents the cursor):
 ```
-Do you like warawara, or do you not like it? [(Y)es / (n)o] _
+Do you like iroiro, or do you not like it? [(Y)es / (n)o] _
 ```
 In this case, `yes`, `no`, `y`, `n`, and empty string are accepted and returned.
 
 All other inputs are ignored and the prompt repeats:
 ```
-Do you like warawara, or do you not like it? [(Y)es / (n)o] what
-Do you like warawara, or do you not like it? [(Y)es / (n)o] why
-Do you like warawara, or do you not like it? [(Y)es / (n)o] #
-Do you like warawara, or do you not like it? [(Y)es / (n)o] yes
+Do you like iroiro, or do you not like it? [(Y)es / (n)o] what
+Do you like iroiro, or do you not like it? [(Y)es / (n)o] why
+Do you like iroiro, or do you not like it? [(Y)es / (n)o] #
+Do you like iroiro, or do you not like it? [(Y)es / (n)o] yes
 You've replied: yes
 ```
 
@@ -237,7 +237,7 @@ assert KEY_ESCAPE == 'esc'
 assert KEY_ESCAPE == 'escape'
 ```
 
-The following keys are pre-defined by warawara:
+The following keys are pre-defined by iroiro:
 
 | Name                                        | Sequence              | Aliases                                   |
 |---------------------------------------------|-----------------------|-------------------------------------------|

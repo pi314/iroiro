@@ -41,7 +41,7 @@ def post_load_lib(module, mod_name):
 def post_load_bin(module, mod_name):
     ext_name = mod_name[4:]
 
-    # Register module into warawara.bin with external name
+    # Register module into iroiro.bin with external name
     setattr(bin, ext_name, module)
 
     # Delete old name from package namespace

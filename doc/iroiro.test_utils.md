@@ -1,8 +1,8 @@
-# warawara.test_utils
+# iroiro.test_utils
 
-This document describes the API set provided by `warawara.test_utils`.
+This document describes the API set provided by `iroiro.test_utils`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## class `TestCase`
@@ -43,7 +43,7 @@ The object is not reusable.
 
 __Examples__
 ```python
-import warawara
+import iroiro
 import threading
 
 class TestRunInThread(TestCase):

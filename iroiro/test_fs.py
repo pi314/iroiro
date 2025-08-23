@@ -2,36 +2,36 @@ import unittest.mock
 
 from .lib_test_utils import *
 
-import warawara as wara
+import iroiro as iro
 
 
 class TestOpen(TestCase):
     def test_open_wb(self):
         mock_open = unittest.mock.mock_open()
         self.patch('builtins.open', mock_open)
-        with wara.open('warawara.txt', 'wb') as f:
-            mock_open.assert_called_once_with('warawara.txt', mode='wb')
+        with iro.open('iroiro.txt', 'wb') as f:
+            mock_open.assert_called_once_with('iroiro.txt', mode='wb')
 
     def test_open_rb(self):
         mock_open = unittest.mock.mock_open()
         self.patch('builtins.open', mock_open)
-        with wara.open('warawara.txt', 'rb') as f:
-            mock_open.assert_called_once_with('warawara.txt', mode='rb')
+        with iro.open('iroiro.txt', 'rb') as f:
+            mock_open.assert_called_once_with('iroiro.txt', mode='rb')
 
     def test_open_without_mode(self):
         mock_open = unittest.mock.mock_open()
         self.patch('builtins.open', mock_open)
-        with wara.open('warawara.txt') as f:
+        with iro.open('iroiro.txt') as f:
             mock_open.assert_called_once_with(
-                    'warawara.txt', mode='rt',
+                    'iroiro.txt', mode='rt',
                     encoding='utf-8', errors='backslashreplace')
 
     def test_write(self):
         mock_open = unittest.mock.mock_open()
         self.patch('builtins.open', mock_open)
-        with wara.open('warawara.txt', 'w') as f:
+        with iro.open('iroiro.txt', 'w') as f:
             mock_open.assert_called_once_with(
-                    'warawara.txt', mode='w',
+                    'iroiro.txt', mode='w',
                     encoding='utf-8', errors='backslashreplace')
 
             f.write('normal write\n')
@@ -61,9 +61,9 @@ class TestOpen(TestCase):
         self.patch('builtins.open', mock_open)
 
         lines = []
-        with wara.open('warawara.txt', 'r') as f:
+        with iro.open('iroiro.txt', 'r') as f:
             mock_open.assert_called_once_with(
-                    'warawara.txt', mode='r',
+                    'iroiro.txt', mode='r',
                     encoding='utf-8', errors='backslashreplace')
 
             lines.append(f.readline())
@@ -84,9 +84,9 @@ class TestOpen(TestCase):
         self.patch('builtins.open', mock_open)
 
         lines = []
-        with wara.open('warawara.txt', mode='r', rstrip='') as f:
+        with iro.open('iroiro.txt', mode='r', rstrip='') as f:
             mock_open.assert_called_once_with(
-                    'warawara.txt', mode='r',
+                    'iroiro.txt', mode='r',
                     encoding='utf-8', errors='backslashreplace')
 
             lines.append(f.readline())
@@ -105,7 +105,7 @@ class TestOpen(TestCase):
 class TestNatsorted(TestCase):
     def test_natsorted(self):
         self.eq(
-                wara.natsorted([
+                iro.natsorted([
                     'apple1',
                     'apple10',
                     'banana10',
@@ -123,7 +123,7 @@ class TestNatsorted(TestCase):
                     ])
 
         self.eq(
-                wara.natsorted([
+                iro.natsorted([
                     'version-1.9',
                     'version-2.0',
                     'version-1.11',
@@ -138,7 +138,7 @@ class TestNatsorted(TestCase):
 
         from pathlib import Path
         self.eq(
-                wara.natsorted([
+                iro.natsorted([
                     Path('version-1.9'),
                     Path('version-2.0'),
                     Path('version-1.11'),

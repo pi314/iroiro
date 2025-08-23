@@ -1,8 +1,8 @@
-# warawara.sh
+# iroiro.sh
 
-This document describes the API set provided by `warawara.sh`.
+This document describes the API set provided by `iroiro.sh`.
 
-For the index of this package, see [warawara.md](warawara.md).
+For the index of this package, see [iroiro.md](iroiro.md).
 
 
 ## `cwd(path=None)`
@@ -16,7 +16,7 @@ or any exception is raised during the process, `False` is returned.
 
 __Examples__
 ```python
-from warawara import cwd
+from iroiro import cwd
 here = cwd()   # get CWD
 
 there = cwd(here / 'tmp') # chdir
@@ -40,7 +40,7 @@ If any operation fails, `False` or a falsy-object is returned.
 __Examples__
 ```python
 from os.path import expanduser
-from warawara import cwd, pushd, popd
+from iroiro import cwd, pushd, popd
 
 here = cwd()
 pushd(expanduser('~/Downloads'))
@@ -53,7 +53,7 @@ assert cwd() == here
 
 ```python
 from os.path import expanduser
-from warawara import cwd, pushd
+from iroiro import cwd, pushd
 
 print(cwd())
 
@@ -72,7 +72,7 @@ Returns a copy of the dir stack as a `list`. The top of the stack is at the end.
 __Examples__
 ```python
 from os.path import expanduser
-from warawara import cwd, pushd, dirs
+from iroiro import cwd, pushd, dirs
 
 here = cwd()
 
@@ -95,7 +95,7 @@ Returns `Path.home()`.
 
 ```python
 from os.path import expanduser
-from warawara import home
+from iroiro import home
 
 assert home() == expanduser('~')
 ```
@@ -109,7 +109,7 @@ The trailing slash is reserved if `path` ends with one.
 
 ```python
 from os.path import expanduser
-from warawara import home
+from iroiro import home
 
 assert shrinkuser(home()) == '~'
 HOME = str(home())

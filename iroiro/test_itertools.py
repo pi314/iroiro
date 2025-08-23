@@ -1,6 +1,6 @@
 from .lib_test_utils import *
 
-from warawara import *
+from iroiro import *
 
 
 class TestItertools(TestCase):
