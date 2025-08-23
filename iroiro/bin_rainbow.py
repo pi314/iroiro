@@ -181,17 +181,29 @@ def main():
     if not argv:
         main_256cube()
 
+    if '-h' in argv or '--help' in argv:
+        subcmd = None
+    elif argv and argv[0] in ('tile', 'gradient'):
+        subcmd = argv.pop(0)
+    else:
+        subcmd = 'list'
+
     colorful = ''.join(
             map(
                 lambda x: lib_colors.color(x[0])(x[1]),
                 zip(
-                    ['#FF0000', '#FFC000', '#FFFF00',
+                    ['#FF2222', '#FFC000', '#FFFF00',
                      '#C0FF00', '#00FF00', '#00FFC0',
                      '#00FFFF', '#00C0FF', '#3333FF', '#C000FF', '#FF00FF'],
                     'coooolorful'
                     )
                 )
             )
+
+    class YesNoToBoolOption(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, values == 'yes')
+
     parser = argparse.ArgumentParser(
             prog=prog,
             description=('Query pre-defined colors from iroiro, ' +
@@ -203,104 +215,95 @@ def main():
                     {s} {prog} all --sort svh
                     {s} {prog} named --grep orange --hex
                     {s} {prog} FFD700 --rgb
-                    {s} {prog} --tile --lines=2 --cols=8 salmon white
-                    {s} {prog} --gradient 00AFFF FFAF00
+                    {s} {prog} tile --lines=2 --cols=8 salmon white
+                    {s} {prog} gradient 00AFFF FFAF00
                     '''.strip('\n')).format(prog=prog, s=lib_colors.murasaki('$')),
             allow_abbrev=False, add_help=False,
             formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('-h', '--help', action='help', help='Show this help message and exit')
 
-    parser.add_argument('--grep',
-                        action='append',
-                        help='''Filter out colors that does not contain the specified sub-string
-This argument can be specified multiple times for multiple keywords''')
+    if not subcmd or subcmd in ('list', 'gradient'):
+        parser.add_argument('--grep',
+                            action='append',
+                            help='''Filter out colors that does not contain the specified sub-string
+    This argument can be specified multiple times for multiple keywords''')
 
-    parser.add_argument('-a', '--aliases',
-                        action='store_true',
-                        help='Show aliases of specified colors')
+    if not subcmd or subcmd in ('list', 'gradient'):
+        parser.add_argument('-a', '--aliases',
+                            action='store_true',
+                            help='Show aliases of specified colors')
 
-    parser.add_argument('--hex', dest='val_fmt',
-                        action='append_const', const='hex',
-                        help='Show RGB value in hex number')
+    if not subcmd or subcmd in ('list', 'gradient'):
+        parser.add_argument('--hex', dest='val_fmt',
+                            action='append_const', const='hex',
+                            help='Show RGB value in hex number')
 
-    parser.add_argument('--rgb', dest='val_fmt',
-                        action='append_const', const='rgb',
-                        help='Show RGB value in 3-tuple')
+        parser.add_argument('--rgb', dest='val_fmt',
+                            action='append_const', const='rgb',
+                            help='Show RGB value in 3-tuple')
 
-    parser.add_argument('--hsv', dest='val_fmt',
-                        action='append_const', const='hsv',
-                        help='Show HSV value in 3-tuple')
+        parser.add_argument('--hsv', dest='val_fmt',
+                            action='append_const', const='hsv',
+                            help='Show HSV value in 3-tuple')
 
-    def SortKey(arg):
-        if arg in ('index', 'name', 'rgb', 'hsv'):
-            return arg
-        if all(ch in 'rgbRGBhsvHSVni' for ch in arg):
-            return arg
-        raise ValueError(arg)
-    parser.add_argument('--sort',
-                        nargs='?', type=SortKey, const='index', metavar='key',
-                        default='',
-                        help='Sort output by the specified attribute.\nAvailable keys: index, name, rgb, hue, [rgbRGBhsvHSVni]')
+    if not subcmd or subcmd in ('list', 'gradient'):
+        def SortKey(arg):
+            if arg in ('index', 'name', 'rgb', 'hsv'):
+                return arg
+            if all(ch in 'rgbRGBhsvHSVni' for ch in arg):
+                return arg
+            raise ValueError(arg)
+        parser.add_argument('--sort',
+                            nargs='?', type=SortKey, const='index', metavar='key',
+                            default='',
+                            help='Sort output by the specified attribute.\nAvailable keys: index, name, rgb, hue, [rgbRGBhsvHSVni]')
 
-    parser.add_argument('-r', '--reverse',
-                        action='store_true',
-                        help='Reverse output sequence')
+    if not subcmd or subcmd in ('list', 'gradient'):
+        parser.add_argument('-r', '--reverse',
+                            action='store_true',
+                            help='Reverse output sequence')
 
-    class YesNoToBoolOption(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            setattr(namespace, self.dest, values == 'yes')
-    parser.add_argument('-m', '--merge',
-                        action=YesNoToBoolOption, nargs='?', choices=['yes', 'no'], const='yes',
-                        help='Merge colors that have same index')
+    if not subcmd or subcmd in ('list', 'gradient'):
+        parser.add_argument('-m', '--merge',
+                            action=YesNoToBoolOption, nargs='?', choices=['yes', 'no'], const='yes',
+                            help='Merge colors that have same index')
 
-    parser.add_argument('-M', '--no-merge',
-                        action='store_false', dest='merge',
-                        help='Dont merge colors that have same index')
+        parser.add_argument('-M', '--no-merge',
+                            action='store_false', dest='merge',
+                            help='Dont merge colors that have same index')
 
-    parser.add_argument('-t', '--tile',
-                        action='store_true',
-                        help='''Tiles to fill the whole screen
-Ignores every other optional arguments except for --height and --width
-Ignores "all" and "named" macros''')
+    if not subcmd or subcmd == 'gradient':
+        parser.add_argument('-c', '--clockwise',
+                            action=YesNoToBoolOption, nargs='?', choices=['yes', 'no'], const='yes',
+                            help='''Calculate clockwise color gradient for HSV''')
 
-    parser.add_argument('-g', '--gradient',
-                        action='store_true',
-                        help='''Calculate color gradient for specified two colors
-Ignores "all" and "named" macros''')
+    if not subcmd or subcmd == 'tile':
+        parser.add_argument('--cols', '--columns',
+                            type=int,
+                            help='Specify terminal columns')
 
-    parser.add_argument('-c', '--clockwise',
-                        action=YesNoToBoolOption, nargs='?', choices=['yes', 'no'], const='yes',
-                        help='''Calculate clockwise color gradient for HSV''')
-
-    parser.add_argument('--cols', '--columns',
-                        type=int,
-                        help='Specify terminal columns')
-
-    parser.add_argument('--lines',
-                        type=int,
-                        help='Specify terminal height')
+        parser.add_argument('--lines',
+                            type=int,
+                            help='Specify terminal height')
 
     parser.add_argument('targets', nargs='*', help='''Names / indexs / RGB hex values / HSV values to query
 "all" and "named" macros could be used in "list" mode''')
 
     parser.set_defaults(val_fmt=[])
 
-    args = parser.parse_intermixed_args()
+    args = parser.parse_intermixed_args(argv)
 
-    if args.tile and args.gradient:
-        print('--tile and --gradient cannot be used together')
-        sys.exit(1)
-
-    elif args.tile:
+    if subcmd == 'tile':
         main_tile(args)
-
+    elif subcmd == 'gradient':
+        main_list(args, gradient=True)
     else:
         main_list(args)
 
 
-def main_list(args):
-    if args.gradient:
+def main_list(args, gradient=False):
+    if gradient:
         # argument handling for gradient
         if not args.targets:
             pend_error('No colors to gradient')
@@ -349,7 +352,7 @@ def main_list(args):
         expanded = [(g, color_text(g)) for g in lib_colors.gradient(src, dst, n, clockwise=args.clockwise)]
 
     else:
-        # argument handling for not gradient
+        # argument handling for list
         if args.merge is None:
             if 'all' in args.targets or 'named' in args.targets:
                 args.merge = True
@@ -441,7 +444,7 @@ def main_list(args):
             name = ''
 
         m = rere(name)
-        if not args.gradient and m.fullmatch(r'[0-9]+') and not m.fullmatch(r'#?[0-9a-fA-F]{6}'):
+        if not gradient and m.fullmatch(r'[0-9]+') and not m.fullmatch(r'#?[0-9a-fA-F]{6}'):
             name = ''
 
         if not args.merge:
