@@ -1,6 +1,8 @@
 Warawara
 ===============================================================================
 
+This project is renamed to iroiro.
+
 A swiss-knife-like library that collects cute utilities for my other projects.
 
 This library only depends on Python standard library and Python itself.
