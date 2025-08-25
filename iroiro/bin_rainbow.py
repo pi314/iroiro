@@ -308,36 +308,27 @@ def main_list(args, gradient=False):
         if not args.targets:
             pend_error('No colors to gradient')
 
-        if len(args.targets) == 1:
-            pend_error('Need destination color')
-
-        if len(args.targets) > 3:
-            pend_error('Too many arguments')
-
         judge_errors()
 
-        arg_src = args.targets[0]
-        arg_dst = args.targets[1]
+        targets = list(args.targets)
+        path = []
+        import re
+        while targets:
+            if not path:
+                path.append([None, None, None])
 
-        if len(args.targets) == 3:
-            arg_n = args.targets[2]
-        else:
-            arg_n = None
+            arg = targets.pop(0)
+            if re.fullmatch(r'\+\d+', arg):
+                path[-1][2] = arg
 
-        src = parse_target(arg_src)
-        if not src:
-            spell_suggestion_err_msg(arg_src)
+            elif path[-1][0] is None:
+                path[-1][0] = arg
 
-        dst = parse_target(arg_dst)
-        if not dst:
-            spell_suggestion_err_msg(arg_dst)
+            elif path[-1][1] is None:
+                path[-1][1] = arg
 
-        try:
-            n = int(arg_n, 10) if arg_n else None
-        except:
-            pend_error('Invalid number: {}'.format(arg_n))
-
-        judge_errors()
+            else:
+                path.append([path[-1][1], arg, None])
 
         def color_text(this_color):
             if isinstance(this_color, lib_colors.Color256):
@@ -349,7 +340,36 @@ def main_list(args, gradient=False):
             else:
                 line.append('(?)')
 
-        expanded = [(g, color_text(g)) for g in lib_colors.gradient(src, dst, n, clockwise=args.clockwise)]
+        src = parse_target(path[0][0])
+        if not src:
+            spell_suggestion_err_msg(src)
+
+        expanded = [(src, color_text(src))]
+        for step in path:
+            src = step[0]
+            dst = step[1]
+
+            if dst is None:
+                continue
+
+            arg_n = step[2]
+
+            src = parse_target(src)
+            if not src:
+                spell_suggestion_err_msg(src)
+
+            dst = parse_target(dst)
+            if not dst:
+                spell_suggestion_err_msg(dst)
+
+            try:
+                n = int(arg_n, 10) if arg_n else None
+            except:
+                pend_error('Invalid number: {}'.format(arg_n))
+
+            judge_errors()
+
+            expanded += [(g, color_text(g)) for g in lib_colors.gradient(src, dst, n, clockwise=args.clockwise)[1:]]
 
     else:
         # argument handling for list
