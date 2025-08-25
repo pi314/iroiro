@@ -12,6 +12,7 @@ from .lib_colors import color
 from .lib_regex import rere
 from .lib_math import resample
 from .lib_math import is_uint8
+from .lib_math import lerp
 from .lib_itertools import lookahead
 from .lib_tui import getch
 
@@ -183,7 +184,9 @@ def main():
 
     if '-h' in argv or '--help' in argv:
         subcmd = None
-    elif argv and argv[0] in ('tile', 'gradient'):
+    elif argv[0] in ('tile', 'gradient'):
+        subcmd = argv.pop(0)
+    elif argv[0] == 'hsv':
         subcmd = argv.pop(0)
     else:
         subcmd = 'list'
@@ -298,6 +301,8 @@ def main():
         main_tile(args)
     elif subcmd == 'gradient':
         main_list(args, gradient=True)
+    elif subcmd == 'hsv':
+        main_hsv(args)
     else:
         main_list(args)
 
@@ -546,6 +551,35 @@ def main_list(args, gradient=False):
                 aliases[this_color.index] = []
 
         print(' '.join(line))
+
+
+def main_hsv(args):
+    import shutil
+    term_size = shutil.get_terminal_size()
+    term_width = term_size.columns
+    term_height = term_size.lines
+
+    height = 5
+    if term_width < 80:
+        width = term_width
+    elif term_width > 120:
+        width = 120
+    else:
+        width = 80
+
+    for y in range(0, height):
+        line = ''
+        for x in range(width):
+            hue = (x / width) * 360
+            sat = 100
+            val1 = lerp(30, 100, (y * 2) / (height*2))
+            val2 = lerp(30, 100, (y * 2 + 1) / (height*2))
+
+            bgcolor = lib_colors.ColorHSV(hue, sat, val1)
+            color = lib_colors.ColorHSV(hue, sat, val2)
+            line += (color / bgcolor)('▄')
+
+        print(line)
 
 
 def main_tile(args):
