@@ -347,159 +347,163 @@ assert decolor(cs) == s
 
 ## `names`
 
-A list of named colors, that are pre-defined by iroiro and could be accessed
+A list of named colors, that are built-in by iroiro and could be accessed
 with `iroiro.<name>`.
 
 The list was taken from
 [W3C CSS Color Module Level 3, 4.3. Extended color keywords](https://www.w3.org/TR/css-color-3/#svg-color),
 with a few extensions.
 
-Note that all these colors are mapped to the nearest xterm 256 color, which
-makes their values duplicate **a lot**.
-Their RGB values are likely **not** consistent with W3C's definition.
+The 256-color index or the RGB value of the colors are listed as following:
 
-* `aliceblue` (15)
-* `antiquewhite` (230)
-* `aqua` (14)
-* `aquamarine` (122)
-* `azure` (15)
-* `beige` (230)
-* `bisque` (224)
-* `black` (0 black)
-* `blanchedalmond` (230)
-* `blue` (12)
-* `blueviolet` (92)
-* `brown` (124)
-* `burlywood` (180)
-* `cadetblue` (73)
-* `chartreuse` (118)
-* `chocolate` (166)
-* `clementine` (166)
-* `coral` (209)
-* `cornflowerblue` (69)
-* `cornsilk` (230)
-* `crimson` (161)
-* `cyan` (14)
-* `darkblue` (18)
-* `darkcyan` (30)
-* `darkgoldenrod` (136)
-* `darkgray` / `darkgrey` (248)
-* `darkgreen` (22)
-* `darkkhaki` (143)
-* `darkmagenta` (90)
-* `darkolivegreen` (239)
-* `darkorange` (208)
-* `darkorchid` (98)
-* `darkred` (88)
-* `darksalmon` (174)
-* `darkseagreen` (108)
-* `darkslateblue` (60)
-* `darkslategray` / `darkslategrey` (238)
-* `darkturquoise` (44)
-* `darkviolet` (92)
-* `deeppink` (198)
-* `deepskyblue` (39)
-* `dimgray` / `dimgrey` (242)
-* `dodgerblue` (33)
-* `firebrick` (124)
-* `floralwhite` (15)
-* `forestgreen` (28)
-* `fuchsia` (13)
-* `gainsboro` (253)
-* `ghostwhite` (15)
-* `gold` (220)
-* `goldenrod` (178)
-* `gray` / `grey` (8 gray)
-* `green` (2 green)
-* `greenyellow` (154)
-* `honeydew` (255)
-* `hotpink` (205)
-* `indianred` (167)
-* `indigo` (54)
-* `ivory` (15)
-* `khaki` (222)
-* `lavender` (255)
-* `lavenderblush` (15)
-* `lawngreen` (118)
-* `lemonchiffon` (230)
-* `lightblue` (152)
-* `lightcoral` (210)
-* `lightcyan` (195)
-* `lightgoldenrodyellow` (230)
-* `lightgray` / `lightgrey` (252)
-* `lightgreen` (120)
-* `lightpink` (217)
-* `lightsalmon` (216)
-* `lightseagreen` (37)
-* `lightskyblue` (117)
-* `lightslategray` / `lightslategrey` (102)
-* `lightsteelblue` (152)
-* `lightyellow` (230)
-* `lime` (10)
-* `limegreen` (77)
-* `linen` (255)
-* `magenta` (13)
-* `maroon` (1 maroon)
-* `mediumaquamarine` (79)
-* `mediumblue` (20)
-* `mediumorchid` (134)
-* `mediumpurple` (98)
-* `mediumseagreen` (71)
-* `mediumslateblue` (99)
-* `mediumspringgreen` (48)
-* `mediumturquoise` (80)
-* `mediumvioletred` (162)
-* `midnightblue` (17)
-* `mintcream` (15)
-* `mistyrose` (224)
-* `moccasin` (223)
-* `murasaki` (135)
-* `navajowhite` (223)
-* `navy` (4 navy)
-* `oldlace` (230)
-* `olive` (3 olive)
-* `olivedrab` (64)
-* `orange` (214)
-* `orangered` (202)
-* `orchid` (170)
-* `palegoldenrod` (223)
-* `palegreen` (120)
-* `paleturquoise` (159)
-* `palevioletred` (168)
-* `papayawhip` (230)
-* `peachpuff` (223)
-* `peru` (173)
-* `pink` (218)
-* `plum` (182)
-* `powderblue` (152)
-* `purple` (5 purple)
-* `red` (9 red)
-* `rosybrown` (138)
-* `royalblue` (62)
-* `saddlebrown` (94)
-* `salmon` (209)
-* `sandybrown` (215)
-* `seagreen` (29)
-* `seashell` (255)
-* `sienna` (130)
-* `silver` (7 silver)
-* `skyblue` (117)
-* `slateblue` (62)
-* `slategray` / `slategrey` (66)
-* `snow` (15)
-* `springgreen` (48)
-* `steelblue` (67)
-* `tan` (180)
-* `teal` (6 teal)
-* `thistle` (182)
-* `tomato` (203)
-* `turquoise` (80)
-* `violet` (213)
-* `wheat` (223)
-* `white` (15)
-* `whitesmoke` (255)
-* `yellow` (11)
-* `yellowgreen` (113)
+| Color                  | Index or RGB Value |
+|------------------------+--------------------|
+| `black`                | 0                  |
+| `maroon`               | 1                  |
+| `green`                | 2                  |
+| `olive`                | 3                  |
+| `navy`                 | 4                  |
+| `purple`               | 5                  |
+| `teal`                 | 6                  |
+| `silver`               | 7                  |
+| `gray` / `grey`        | 8                  |
+| `red`                  | 9                  |
+| `lime`                 | 10                 |
+| `yellow`               | 11                 |
+| `blue`                 | 12                 |
+| `fuchsia` / `magenta`  | 13                 |
+| `aqua` / `cyan`        | 14                 |
+| `white`                | 15                 |
+| `murasaki`             | 135                |
+| `aliceblue`            | (240, 248, 255)    |
+| `antiquewhite`         | (250, 235, 215)    |
+| `aquamarine`           | (127, 255, 212)    |
+| `azure`                | (240, 255, 255)    |
+| `beige`                | (245, 245, 220)    |
+| `bisque`               | (255, 228, 196)    |
+| `blanchedalmond`       | (255, 235, 205)    |
+| `blueviolet`           | (138, 43, 226)     |
+| `brown`                | (165, 42, 42)      |
+| `burlywood`            | (222, 184, 135)    |
+| `cadetblue`            | (95, 158, 160)     |
+| `chartreuse`           | (127, 255, 0)      |
+| `chocolate`            | (210, 105, 30)     |
+| `clementine`           | (233, 110, 0)      |
+| `coral`                | (255, 127, 80)     |
+| `cornflowerblue`       | (100, 149, 237)    |
+| `cornsilk`             | (255, 248, 220)    |
+| `crimson`              | (220, 20, 60)      |
+| `darkblue`             | (0, 0, 139)        |
+| `darkcyan`             | (0, 139, 139)      |
+| `darkgoldenrod`        | (184, 134, 11)     |
+| `darkgray`             | (169, 169, 169)    |
+| `darkgreen`            | (0, 100, 0)        |
+| `darkgrey`             | (169, 169, 169)    |
+| `darkkhaki`            | (189, 183, 107)    |
+| `darkmagenta`          | (139, 0, 139)      |
+| `darkolivegreen`       | (85, 107, 47)      |
+| `darkorange`           | (255, 140, 0)      |
+| `darkorchid`           | (153, 50, 204)     |
+| `darkred`              | (139, 0, 0)        |
+| `darksalmon`           | (233, 150, 122)    |
+| `darkseagreen`         | (143, 188, 143)    |
+| `darkslateblue`        | (72, 61, 139)      |
+| `darkslategray`        | (47, 79, 79)       |
+| `darkslategrey`        | (47, 79, 79)       |
+| `darkturquoise`        | (0, 206, 209)      |
+| `darkviolet`           | (148, 0, 211)      |
+| `deeppink`             | (255, 20, 147)     |
+| `deepskyblue`          | (0, 191, 255)      |
+| `dimgray`              | (105, 105, 105)    |
+| `dimgrey`              | (105, 105, 105)    |
+| `dodgerblue`           | (30, 144, 255)     |
+| `firebrick`            | (178, 34, 34)      |
+| `floralwhite`          | (255, 250, 240)    |
+| `forestgreen`          | (34, 139, 34)      |
+| `gainsboro`            | (220, 220, 220)    |
+| `ghostwhite`           | (248, 248, 255)    |
+| `gold`                 | (255, 215, 0)      |
+| `goldenrod`            | (218, 165, 32)     |
+| `greenyellow`          | (173, 255, 47)     |
+| `honeydew`             | (240, 255, 240)    |
+| `hotpink`              | (255, 105, 180)    |
+| `indianred`            | (205, 92, 92)      |
+| `indigo`               | (75, 0, 130)       |
+| `ivory`                | (255, 255, 240)    |
+| `khaki`                | (240, 230, 140)    |
+| `lavender`             | (230, 230, 250)    |
+| `lavenderblush`        | (255, 240, 245)    |
+| `lawngreen`            | (124, 252, 0)      |
+| `lemonchiffon`         | (255, 250, 205)    |
+| `lightblue`            | (173, 216, 230)    |
+| `lightcoral`           | (240, 128, 128)    |
+| `lightcyan`            | (224, 255, 255)    |
+| `lightgoldenrodyellow` | (250, 250, 210)    |
+| `lightgray`            | (211, 211, 211)    |
+| `lightgreen`           | (144, 238, 144)    |
+| `lightgrey`            | (211, 211, 211)    |
+| `lightpink`            | (255, 182, 193)    |
+| `lightsalmon`          | (255, 160, 122)    |
+| `lightseagreen`        | (32, 178, 170)     |
+| `lightskyblue`         | (135, 206, 250)    |
+| `lightslategray`       | (119, 136, 153)    |
+| `lightslategrey`       | (119, 136, 153)    |
+| `lightsteelblue`       | (176, 196, 222)    |
+| `lightyellow`          | (255, 255, 224)    |
+| `limegreen`            | (50, 205, 50)      |
+| `linen`                | (250, 240, 230)    |
+| `mediumaquamarine`     | (102, 205, 170)    |
+| `mediumblue`           | (0, 0, 205)        |
+| `mediumorchid`         | (186, 85, 211)     |
+| `mediumpurple`         | (147, 112, 219)    |
+| `mediumseagreen`       | (60, 179, 113)     |
+| `mediumslateblue`      | (123, 104, 238)    |
+| `mediumspringgreen`    | (0, 250, 154)      |
+| `mediumturquoise`      | (72, 209, 204)     |
+| `mediumvioletred`      | (199, 21, 133)     |
+| `midnightblue`         | (25, 25, 112)      |
+| `mintcream`            | (245, 255, 250)    |
+| `mistyrose`            | (255, 228, 225)    |
+| `moccasin`             | (255, 228, 181)    |
+| `navajowhite`          | (255, 222, 173)    |
+| `oldlace`              | (253, 245, 230)    |
+| `olivedrab`            | (107, 142, 35)     |
+| `orange`               | (255, 165, 0)      |
+| `orangered`            | (255, 69, 0)       |
+| `orchid`               | (218, 112, 214)    |
+| `palegoldenrod`        | (238, 232, 170)    |
+| `palegreen`            | (152, 251, 152)    |
+| `paleturquoise`        | (175, 238, 238)    |
+| `palevioletred`        | (219, 112, 147)    |
+| `papayawhip`           | (255, 239, 213)    |
+| `peachpuff`            | (255, 218, 185)    |
+| `peru`                 | (205, 133, 63)     |
+| `pink`                 | (255, 192, 203)    |
+| `plum`                 | (221, 160, 221)    |
+| `powderblue`           | (176, 224, 230)    |
+| `rosybrown`            | (188, 143, 143)    |
+| `royalblue`            | (65, 105, 225)     |
+| `saddlebrown`          | (139, 69, 19)      |
+| `salmon`               | (250, 128, 114)    |
+| `sandybrown`           | (244, 164, 96)     |
+| `seagreen`             | (46, 139, 87)      |
+| `seashell`             | (255, 245, 238)    |
+| `sienna`               | (160, 82, 45)      |
+| `skyblue`              | (135, 206, 235)    |
+| `slateblue`            | (106, 90, 205)     |
+| `slategray`            | (112, 128, 144)    |
+| `slategrey`            | (112, 128, 144)    |
+| `snow`                 | (255, 250, 250)    |
+| `springgreen`          | (0, 255, 127)      |
+| `steelblue`            | (70, 130, 180)     |
+| `tan`                  | (210, 180, 140)    |
+| `thistle`              | (216, 191, 216)    |
+| `tomato`               | (255, 99, 71)      |
+| `turquoise`            | (64, 224, 208)     |
+| `violet`               | (238, 130, 238)    |
+| `wheat`                | (245, 222, 179)    |
+| `whitesmoke`           | (245, 245, 245)    |
+| `yellowgreen`          | (154, 205, 50)     |
 
 
 ## `nocolor`
