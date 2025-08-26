@@ -188,6 +188,9 @@ def main():
         subcmd = argv.pop(0)
     elif argv[0] == 'hsv':
         subcmd = argv.pop(0)
+    elif argv[0] == 'help':
+        argv.pop(0)
+        subcmd = None
     else:
         subcmd = 'list'
 
@@ -294,6 +297,10 @@ def main():
 "all" and "named" macros could be used in "list" mode''')
 
     parser.set_defaults(val_fmt=[])
+
+    if subcmd is None:
+        parser.print_help()
+        parser.exit(1)
 
     args = parser.parse_intermixed_args(argv)
 
