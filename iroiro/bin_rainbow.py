@@ -29,34 +29,6 @@ def judge_errors():
         sys.exit(1)
 
 
-def high_contrast_fg(c):
-    if isinstance(c, lib_colors.Color256):
-        c = c.index
-
-    if c == 0:
-        return None
-
-    if c < 16:
-        return 0
-
-    elif c < 232:
-        base = c - 16
-        r = (base // 36)
-        g = ((base % 36) // 6)
-        b = (base % 6)
-
-        if r < 2 and g < 2:
-            return None
-
-        if r < 3 and g < 1:
-            return None
-
-    elif c in range(232, 240):
-        return None
-
-    return 0
-
-
 def parse_target(arg):
     if not isinstance(arg, str):
         return
@@ -161,8 +133,28 @@ def main_256cube():
     # Print color cube palette
     print('Format: ESC[30;48;5;{}m')
     for c in range(0, 256):
-        color_rgb = color(c).to_rgb()
-        print(paint(fg=high_contrast_fg(c), bg=c)(' ' + str(c).rjust(3)), end='')
+        bg = color(c).to_rgb()
+
+        # Approximation of brightness
+        if c < 16:
+            brightness = 32 * (c != 0)
+        elif c < 232:
+            brightness = 0.21 * bg.R + 0.72 * bg.G + 0.07 * bg.B
+        else:
+            brightness = 32 * (c >= 238)
+
+        # Too dark
+        if brightness < 32:
+            if brightness == 0:
+                fg = 8
+            elif max(bg.RGB) > 192:
+                fg = 0
+            else:
+                fg = bg * 4
+        else:
+            fg = bg.to_rgb() // 4
+
+        print(paint(fg=fg, bg=c)(' ' + str(c).rjust(3)), end='')
 
         if c < 16 and (c + 1) % 8 == 0:
             print()
