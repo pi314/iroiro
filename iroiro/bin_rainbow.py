@@ -7,8 +7,8 @@ from os.path import basename
 
 from . import lib_colors
 
-from .lib_colors import paint
-from .lib_colors import color
+from .lib_colors import paint, color
+from .lib_colors import Color, Color256, ColorRGB, ColorHSV
 from .lib_regex import rere
 from .lib_math import resample
 from .lib_math import is_uint8
@@ -57,11 +57,11 @@ def parse_target(arg):
     # #RRR,GGG,BBB format
     elif m.fullmatch(r'#([0-9]+),([0-9]+),([0-9]+)'):
         r, g, b = map(lambda x: int(x, 10), arg[1:].split(','))
-        ret = lib_colors.ColorRGB(r, g, b)
+        ret = ColorRGB(r, g, b)
 
     # @HHH,SSS,VVV format
     elif m.fullmatch(r'@([0-9]+),([0-9]+),([0-9]+)'):
-        ret = lib_colors.ColorHSV(arg)
+        ret = ColorHSV(arg)
 
     # int
     elif m.fullmatch(r'[0-9]+'):
@@ -93,6 +93,9 @@ def spell_suggestions(word):
 
 
 def spell_suggestion_err_msg(word):
+    if word is None:
+        return
+
     err_msg = 'Unknown color name "{}"'.format(word)
     suggestions = spell_suggestions(word)[:3]
     if suggestions:
@@ -105,6 +108,44 @@ def spell_suggestion_err_msg(word):
             err_msg += '"{}", "{}", or "{}"'.format(*suggestions)
         err_msg += '?'
     pend_error(err_msg)
+
+
+class Inventory:
+    def __init__(self):
+        self.data = []
+
+    def __bool__(self):
+        return bool(self.data)
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __contains__(self, color):
+        return self[color] is not None
+
+    def __getitem__(self, idx):
+        if isinstance(idx, Color):
+            for item in self.data:
+                if item[0] == idx:
+                    return item
+        else:
+            return self.data[idx]
+
+    def add(self, color, name=None):
+        item = self[color]
+        if not item:
+            item = self.append(color, name=name)
+        else:
+            if name and name not in item[1]:
+                item[1].append(name)
+        return item
+
+    def append(self, color, name=None):
+        item = (color, [])
+        if name and name not in item[1]:
+            item[1].append(name)
+        self.data.append(item)
+        return item
 
 
 def expand_macro_all():
@@ -176,7 +217,7 @@ def main():
 
     colorful = ''.join(
             map(
-                lambda x: lib_colors.color(x[0])(x[1]),
+                lambda x: color(x[0])(x[1]),
                 zip(
                     ['#FF2222', '#FFC000', '#FFFF00',
                      '#C0FF00', '#00FF00', '#00FFC0',
@@ -323,11 +364,11 @@ def main_list(args, gradient=False):
                 path.append([path[-1][1], arg, None])
 
         def color_text(this_color):
-            if isinstance(this_color, lib_colors.Color256):
+            if isinstance(this_color, Color256):
                 return str(this_color.index)
-            elif isinstance(this_color, lib_colors.ColorRGB):
+            elif isinstance(this_color, ColorRGB):
                 return '{:#X}'.format(this_color)
-            elif isinstance(this_color, lib_colors.ColorHSV):
+            elif isinstance(this_color, ColorHSV):
                 return '@{:},{:},{:}'.format(this_color.H, this_color.S, this_color.V)
             else:
                 line.append('(?)')
@@ -415,18 +456,18 @@ def main_list(args, gradient=False):
 
     # Sort
     if args.sort == 'index':
-        expanded.sort(key=lambda x: int(x[0]) + (isinstance(x[0], lib_colors.ColorRGB) << 8))
+        expanded.sort(key=lambda x: int(x[0]) + (isinstance(x[0], ColorRGB) << 8))
     elif args.sort == 'name':
-        expanded.sort(key=lambda x: ((isinstance(x[0], lib_colors.ColorRGB)), x[1]))
+        expanded.sort(key=lambda x: ((isinstance(x[0], ColorRGB)), x[1]))
     elif args.sort == 'rgb':
-        expanded.sort(key=lambda x: (x[0].to_rgb() if isinstance(x[0], lib_colors.Color256) else x[0]).rgb)
+        expanded.sort(key=lambda x: (x[0].to_rgb() if isinstance(x[0], Color256) else x[0]).rgb)
     elif args.sort == 'hue':
         def to_hsv(x):
-            if isinstance(x, lib_colors.ColorHSV):
+            if isinstance(x, ColorHSV):
                 return x
-            if isinstance(x, lib_colors.ColorRGB):
+            if isinstance(x, ColorRGB):
                 return x.to_hsv()
-            if isinstance(x, lib_colors.Color256):
+            if isinstance(x, Color256):
                 return x.to_rgb().to_hsv()
         expanded.sort(key=lambda x: to_hsv(x[0]).h)
     elif all(ch in 'rgbRGBhsvHSVni' for ch in args.sort):
@@ -450,41 +491,10 @@ def main_list(args, gradient=False):
             return ret
         expanded.sort(key=lambda x: key(x[0]))
 
-    inventory = []
-    def stage(color, name):
-        if name is None:
-            name = ''
-
-        m = rere(name)
-        if not gradient and m.fullmatch(r'[0-9]+') and not m.fullmatch(r'#?[0-9a-fA-F]{6}'):
-            name = ''
-
-        if not args.merge:
-            inventory.append((color, [name] if name else []))
-            return
-
-        entries = filter(lambda entry: entry[0] == color, inventory)
-
-        try:
-            entry = next(entries)
-            append = False
-            if not entry[1]:
-                append = True
-            if name and args.merge and name not in entry[1]:
-                append = True
-
-            if append:
-                entry[1].append(name)
-
-            return
-
-        except StopIteration:
-            pass
-
-        inventory.append((color, [name] if name else []))
+    inventory = Inventory()
 
     for entry in expanded:
-        stage(entry[0], entry[1])
+        inventory.add(entry[0], entry[1])
 
     if not inventory:
         print('No colors to query')
@@ -502,14 +512,14 @@ def main_list(args, gradient=False):
 
     for this_color, names in inventory[::(-1 if args.reverse else 1)]:
         line = []
-        rgb = this_color if isinstance(this_color, lib_colors.ColorRGB) else this_color.to_rgb()
+        rgb = this_color if isinstance(this_color, ColorRGB) else this_color.to_rgb()
         hsv = rgb.to_hsv()
 
-        if isinstance(this_color, lib_colors.Color256):
+        if isinstance(this_color, Color256):
             line.append('{:>3}'.format(this_color.index))
-        elif isinstance(this_color, lib_colors.ColorRGB):
+        elif isinstance(this_color, ColorRGB):
             line.append('(#)')
-        elif isinstance(this_color, lib_colors.ColorHSV):
+        elif isinstance(this_color, ColorHSV):
             line.append('(@)')
         else:
             line.append('(?)')
@@ -528,7 +538,7 @@ def main_list(args, gradient=False):
 
         line.append(', '.join(names))
 
-        if isinstance(this_color, lib_colors.Color256):
+        if isinstance(this_color, Color256):
             aliases[this_color.index] = [name
                                          for name in aliases[this_color.index]
                                          if name not in names]
@@ -562,8 +572,8 @@ def main_hsv(args):
             val1 = lerp(30, 100, (y * 2) / (height*2))
             val2 = lerp(30, 100, (y * 2 + 1) / (height*2))
 
-            bgcolor = lib_colors.ColorHSV(hue, sat, val1)
-            color = lib_colors.ColorHSV(hue, sat, val2)
+            bgcolor = ColorHSV(hue, sat, val1)
+            color = ColorHSV(hue, sat, val2)
             line += (color / bgcolor)('▄')
 
         print(line)
