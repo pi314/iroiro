@@ -135,17 +135,45 @@ class Inventory:
         item = self[color]
         if not item:
             item = self.append(color, name=name)
-        else:
-            if name and name not in item[1]:
-                item[1].append(name)
+        if name and name not in item[1]:
+            item[1].append(name)
         return item
 
     def append(self, color, name=None):
         item = (color, [])
+        self.data.append(item)
         if name and name not in item[1]:
             item[1].append(name)
-        self.data.append(item)
         return item
+
+    def sort(self, key):
+        if key == 'index':
+            key = 'i'
+        elif key == 'name':
+            key = 'n'
+        elif key == 'hue':
+            key = 'h'
+
+        def sort_key(item):
+            ret = []
+            for ch in key:
+                try:
+                    if ch == 'n':
+                        ret.append(item[1])
+                    elif ch == 'i':
+                        ret.append(item[0].index)
+                    else:
+                        ret.append(getattr(item[0], ch))
+                except AttributeError:
+                    if ch in 'rgbRGB':
+                        ret.append(getattr(item[0].to_rgb(), ch))
+                    if ch in 'hsvHSV':
+                        ret.append(getattr(item[0].to_hsv(), ch))
+                    if ch == 'i':
+                        ret.append(int(item[0]) + (isinstance(item[0], ColorRGB) << 8))
+            return ret
+
+        self.data.sort(key=sort_key)
 
 
 def expand_macro_all():
@@ -272,7 +300,7 @@ This argument can be specified multiple times for multiple keywords''')
                         help='Show HSV value in 3-tuple')
 
     def SortKey(arg):
-        if arg in ('index', 'name', 'rgb', 'hsv'):
+        if arg in ('index', 'name', 'rgb', 'hsv', 'hue'):
             return arg
         if all(ch in 'rgbRGBhsvHSVni' for ch in arg):
             return arg
@@ -454,47 +482,12 @@ def main_list(args, gradient=False):
                         expanded.append((C, name))
             del tmp
 
-    # Sort
-    if args.sort == 'index':
-        expanded.sort(key=lambda x: int(x[0]) + (isinstance(x[0], ColorRGB) << 8))
-    elif args.sort == 'name':
-        expanded.sort(key=lambda x: ((isinstance(x[0], ColorRGB)), x[1]))
-    elif args.sort == 'rgb':
-        expanded.sort(key=lambda x: (x[0].to_rgb() if isinstance(x[0], Color256) else x[0]).rgb)
-    elif args.sort == 'hue':
-        def to_hsv(x):
-            if isinstance(x, ColorHSV):
-                return x
-            if isinstance(x, ColorRGB):
-                return x.to_hsv()
-            if isinstance(x, Color256):
-                return x.to_rgb().to_hsv()
-        expanded.sort(key=lambda x: to_hsv(x[0]).h)
-    elif all(ch in 'rgbRGBhsvHSVni' for ch in args.sort):
-        def key(x):
-            ret = []
-            for ch in args.sort:
-                try:
-                    if ch == 'n':
-                        ret.append(x.name)
-                    elif ch == 'i':
-                        ret.append(x.index)
-                    else:
-                        ret.append(getattr(x, ch))
-                except AttributeError:
-                    if ch in 'rgbRGB':
-                        ret.append(getattr(x.to_rgb(), ch))
-                    if ch in 'hsvHSV':
-                        ret.append(getattr(x.to_hsv(), ch))
-                    if ch == 'i':
-                        ret.append(int(x))
-            return ret
-        expanded.sort(key=lambda x: key(x[0]))
-
     inventory = Inventory()
 
     for entry in expanded:
         inventory.add(entry[0], entry[1])
+
+    inventory.sort(args.sort)
 
     if not inventory:
         print('No colors to query')
