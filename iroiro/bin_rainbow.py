@@ -175,6 +175,18 @@ class Inventory:
 
         self.data.sort(key=sort_key)
 
+    def grep(self, keywords):
+        if not keywords:
+            return
+
+        tmp = self.data
+        self.data = []
+        for clr, name_list in tmp:
+            for name in name_list:
+                for keyword in keywords:
+                    if keyword in name:
+                        self.add(clr, name)
+
 
 def expand_macro_all():
     ret = []
@@ -469,25 +481,14 @@ def main_list(args, gradient=False):
 
         judge_errors()
 
-    # Grep
-    if args.grep:
-        for keyword in args.grep:
-            tmp, expanded = expanded, []
-            for C, name in tmp:
-                if keyword == '':
-                    if not name:
-                        expanded.append((C, name))
-                else:
-                    if name and keyword in name:
-                        expanded.append((C, name))
-            del tmp
-
     inventory = Inventory()
 
     for entry in expanded:
         inventory.add(entry[0], entry[1])
 
+    print(inventory)
     inventory.sort(args.sort)
+    inventory.grep(args.grep)
 
     if not inventory:
         print('No colors to query')
