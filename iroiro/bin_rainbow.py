@@ -492,11 +492,16 @@ def main_list(args, gradient=False):
     for entry in expanded:
         inventory.add(entry[0], entry[1])
 
+    try:
+        inventory.grep(args.grep)
+    except re.PatternError as e:
+        pend_error('Invalid pattern:', e.pattern)
+        judge_errors()
+
     inventory.sort(args.sort)
-    inventory.grep(args.grep)
 
     if not inventory:
-        print('No colors to query')
+        print('No colors to show')
         sys.exit(1)
 
     unmentioned_names = set(lib_colors.names)
