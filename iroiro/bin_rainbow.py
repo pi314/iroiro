@@ -2,6 +2,7 @@ import sys
 import shutil
 import argparse
 import textwrap
+import re
 
 from os.path import basename
 
@@ -176,6 +177,8 @@ class Inventory:
         self.data.sort(key=sort_key)
 
     def grep(self, keywords):
+        import string
+
         if not keywords:
             return
 
@@ -184,8 +187,12 @@ class Inventory:
         for clr, name_list in tmp:
             for name in name_list:
                 for keyword in keywords:
-                    if keyword in name:
-                        self.add(clr, name)
+                    if set(string.ascii_letters) - set(keyword):
+                        if re.search(keyword, name):
+                            self.add(clr, name)
+                    else:
+                        if keyword in name:
+                            self.add(clr, name)
 
 
 def expand_macro_all():
@@ -385,7 +392,6 @@ def main_list(args, gradient=False):
 
         targets = list(args.targets)
         path = []
-        import re
         while targets:
             if not path:
                 path.append([None, None, None])
@@ -486,7 +492,6 @@ def main_list(args, gradient=False):
     for entry in expanded:
         inventory.add(entry[0], entry[1])
 
-    print(inventory)
     inventory.sort(args.sort)
     inventory.grep(args.grep)
 
@@ -545,7 +550,6 @@ def main_list(args, gradient=False):
 
 
 def main_hsv(args):
-    import shutil
     term_size = shutil.get_terminal_size()
     term_width = term_size.columns
     term_height = term_size.lines
