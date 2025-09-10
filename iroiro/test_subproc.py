@@ -430,6 +430,7 @@ class TestSubproc(TestCase):
         p.signal(signal.SIGINT)
         p.wait()
         self.eq(p.signaled, signal.SIGINT)
+        self.eq(repr(p.signaled), '<IntegerEvent 2>')
 
     def test_kill_callable(self):
         checkpoint = self.checkpoint()
@@ -446,14 +447,58 @@ class TestSubproc(TestCase):
 
         import signal
         checkpoint.check()
-        self.eq(p.signaled, signal.SIGKILL)
+        self.eq(p.signaled, signal.SIGTERM)
 
         p.signaled.clear()
         self.eq(p.signaled, False)
         self.eq(p.signaled, None)
 
-        p.kill(signal.SIGTERM)
+        p.kill(signal.SIGKILL)
+        self.eq(p.signaled, signal.SIGKILL)
+
+    def test_kill_sigint_pass_to_child_process(self):
+        import signal
+
+        class MockPopen:
+            def __init__(self, *args, **kwargs):
+                self.args = args
+                self.kwargs = kwargs
+                self.received_signal = None
+
+                class MockStream:
+                    def __init__(self):
+                        pass
+                    def __iter__(self):
+                        return iter([])
+                    def close(self):
+                        pass
+                self.stdin = MockStream()
+                self.stdout = MockStream()
+                self.stderr = MockStream()
+
+            def wait(self, timeout=None):
+                raise exception
+
+            def send_signal(self, signal):
+                self.received_signal = signal
+
+        self.patch('subprocess.Popen', MockPopen)
+
+        exception = KeyboardInterrupt()
+        p = command(['sleep', '86400'])
+        with self.raises(KeyboardInterrupt):
+            p.run()
+            self.fail()
+        self.eq(p.signaled, signal.SIGINT)
+        self.eq(p.proc.received_signal, signal.SIGINT)
+
+        exception = OSError()
+        p = command(['sleep', '86400'])
+        with self.raises(OSError):
+            p.run()
+            self.fail()
         self.eq(p.signaled, signal.SIGTERM)
+        self.eq(p.proc.received_signal, signal.SIGTERM)
 
     def test_read_stdout_twice(self):
         ans = '1 2 3 4 5'.split()

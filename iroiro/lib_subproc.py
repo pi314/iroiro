@@ -2,7 +2,7 @@ import queue
 import subprocess as sub
 import threading
 
-from signal import SIGKILL
+from signal import SIGINT, SIGTERM
 
 from .lib_itertools import is_iterable
 
@@ -161,6 +161,9 @@ class IntegerEvent(threading.Event):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.value = None
+
+    def __repr__(self):
+        return f'<IntegerEvent {self.value}>'
 
     def set(self, value=None):
         self.value = value
@@ -405,8 +408,17 @@ class command:
 
         # Wait for child process to finish
         if self.proc:
-            self.proc.wait(timeout)
-            self.returncode = self.proc.returncode
+            try:
+                self.proc.wait(timeout)
+                self.returncode = self.proc.returncode
+            except TimeoutExpired as e:
+                self.exception = e
+            except KeyboardInterrupt as e:
+                self.signal(SIGINT)
+                self.exception = e
+            except Exception as e:
+                self.signal(SIGTERM)
+                self.exception = e
 
         if self.thread:
             self.thread.join(timeout)
@@ -430,10 +442,9 @@ class command:
     def signal(self, signal):
         if self.proc:
             self.proc.send_signal(signal)
-
         self.signaled.set(signal)
 
-    def kill(self, signal=SIGKILL):
+    def kill(self, signal=SIGTERM):
         self.signal(signal)
 
         if self.proc:
