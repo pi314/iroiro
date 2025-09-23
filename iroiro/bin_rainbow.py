@@ -133,18 +133,30 @@ class Inventory:
             return self.data[idx]
 
     def add(self, color, name=None):
+        if not isinstance(name, (list, tuple)):
+            namelist = [name]
+        else:
+            namelist = name
+
         item = self[color]
         if not item:
             item = self.append(color, name=name)
-        if name and name not in item[1]:
-            item[1].append(name)
+        for n in namelist:
+            if n and n not in item[1]:
+                item[1].append(n)
         return item
 
     def append(self, color, name=None):
+        if not isinstance(name, (list, tuple)):
+            namelist = [name]
+        else:
+            namelist = name
+
         item = (color, [])
         self.data.append(item)
-        if name and name not in item[1]:
-            item[1].append(name)
+        for n in namelist:
+            if n and n not in item[1]:
+                item[1].append(n)
         return item
 
     def sort(self, key):
@@ -299,7 +311,7 @@ def main():
 
     parser.add_argument('--grep',
                         action='append',
-                        help='''Filter out colors that does not contain the specified sub-string
+                        help='''Filter colors that have name contains the specified sub-string
 This argument can be specified multiple times for multiple keywords''')
 
     parser.add_argument('-a', '--aliases',
@@ -343,7 +355,7 @@ This argument can be specified multiple times for multiple keywords''')
 
     parser.add_argument('-c', '--clockwise',
                         action=YesNoToBoolOption, nargs='?', choices=['yes', 'no'], const='yes',
-                        help='''Calculate clockwise color gradient for HSV''')
+                        help='Calculate clockwise color gradient for HSV')
 
     parser.add_argument('--cols', '--columns',
                         type=int,
@@ -354,7 +366,7 @@ This argument can be specified multiple times for multiple keywords''')
                         help='Specify terminal lines')
 
     parser.add_argument('subcommand', nargs='?',
-                        help='''Sub-command: list, gradient, tile, hsv, help''')
+                        help='Sub-command: list, gradient, tile, hsv, help')
 
     parser.add_argument('targets', nargs='*', help='''Names / indexs / RGB hex values / HSV values to query
 "all" and "named" macros could be used in "list" mode''')
@@ -383,6 +395,8 @@ This argument can be specified multiple times for multiple keywords''')
 
 
 def main_list(args, gradient=False):
+    inventory = Inventory()
+
     if gradient:
         # argument handling for gradient
         if not args.targets:
@@ -463,34 +477,24 @@ def main_list(args, gradient=False):
         if args.grep and not args.targets:
             args.targets = ['all']
 
-        expanded = []
         for arg in args.targets:
             if arg in ('all', 'named'):
                 if arg == 'all':
-                    expansion = expand_macro_all()
-                elif arg == 'named':
-                    expansion = expand_macro_named()
+                    for i in expand_macro_all():
+                        inventory.add(i[0], i[1])
 
-                for entry in expansion:
-                    if not entry[1]:
-                        expanded.append((entry[0], None))
-                    else:
-                        for name in entry[1]:
-                            expanded.append((entry[0], name))
+                elif arg == 'named':
+                    for i in expand_macro_named():
+                        inventory.add(i[0], i[1])
                 continue
 
             t = parse_target(arg)
             if t:
-                expanded.append((t, arg))
+                inventory.append(t, arg)
             else:
                 spell_suggestion_err_msg(arg)
 
         judge_errors()
-
-    inventory = Inventory()
-
-    for entry in expanded:
-        inventory.add(entry[0], entry[1])
 
     try:
         inventory.grep(args.grep)
