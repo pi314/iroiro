@@ -1,4 +1,4 @@
-import warawara
+import iroiro
 
 
 def main():
@@ -11,7 +11,7 @@ def main():
         if menu.data.grabbing and menu.cursor == item:
             return f'{cursor}{box[0]}{check}{box[1]} {item.text}{ind}'
         return f'{cursor} {box[0]}{check}{box[1]} {item.text}{ind}'
-    menu = warawara.Menu('title', warawara.natsorted(os.listdir()), checkbox='[*]', format=format, max_height=20)
+    menu = iroiro.Menu('title', iroiro.natsorted(os.listdir()), checkbox='[*]', format=format, max_height=20)
 
     def pager_info(key):
         menu.message = 'key={} cursor={} grab={} text=[{}] visible={} scroll={} height={}'.format(
@@ -20,13 +20,13 @@ def main():
 
     def onkey_vim(menu, key):
         if key == 'k':
-            return menu.feedkey(warawara.KEY_UP)
+            return menu.feedkey(iroiro.KEY_UP)
         elif key == 'j':
-            return menu.feedkey(warawara.KEY_DOWN)
+            return menu.feedkey(iroiro.KEY_DOWN)
         if key == 'h':
-            return menu.feedkey(warawara.KEY_LEFT)
+            return menu.feedkey(iroiro.KEY_LEFT)
         elif key == 'l':
-            return menu.feedkey(warawara.KEY_RIGHT)
+            return menu.feedkey(iroiro.KEY_RIGHT)
         elif key == 'ctrl-y':
             menu.scroll(-1)
         elif key == 'ctrl-e':
@@ -95,10 +95,10 @@ def main():
         menu.cursor.down()
         if menu.data.grabbing:
             menu.data.grabbing.moveto(menu.cursor)
-    menu.onkey(warawara.KEY_UP, up)
+    menu.onkey(iroiro.KEY_UP, up)
     menu.onkey('down', down)
-    menu.onkey(warawara.KEY_LEFT, grab)
-    menu.onkey(warawara.KEY_RIGHT, ungrab)
+    menu.onkey(iroiro.KEY_LEFT, grab)
+    menu.onkey(iroiro.KEY_RIGHT, ungrab)
 
     menu.onkey(onkey, onkey_vim, onkey_resize)
     menu.onkey('q', menu.quit)
@@ -146,11 +146,11 @@ def main():
             import time
             for item in menu:
                 if not item.meta:
-                    item.feedkey(warawara.KEY_SPACE)
+                    item.feedkey(iroiro.KEY_SPACE)
                     item.menu.refresh()
                     time.sleep(0.05)
         item.menu.Thread(target=task).start()
-    select_all.onkey(warawara.KEY_SPACE, select_and_trigger_all)
+    select_all.onkey(iroiro.KEY_SPACE, select_and_trigger_all)
 
     unselect_all = menu.append('Unselect all', meta=True)
     def check(item):
@@ -161,7 +161,7 @@ def main():
         else:
             return '-'
     unselect_all.check = check
-    unselect_all.onkey(warawara.KEY_SPACE, menu.unselect_all)
+    unselect_all.onkey(iroiro.KEY_SPACE, menu.unselect_all)
 
     def enter(item, key):
         item.menu.message = 'enter'
@@ -172,16 +172,16 @@ def main():
             return f'{cursor}{item.text}'
         return f'{cursor} {item.text}'
     done.format = format_done
-    done.onkey(warawara.KEY_ENTER, enter)
+    done.onkey(iroiro.KEY_ENTER, enter)
 
     def menu_enter(menu, key):
         if menu.cursor.meta:
-            return menu.cursor.feedkey(warawara.KEY_SPACE)
+            return menu.cursor.feedkey(iroiro.KEY_SPACE)
         elif menu.cursor.selected:
             menu.done()
         else:
             menu.cursor.select()
-    menu.onkey(warawara.KEY_ENTER, menu_enter)
+    menu.onkey(iroiro.KEY_ENTER, menu_enter)
 
     ret = menu.interact()
     print(ret)
