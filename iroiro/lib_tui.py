@@ -216,6 +216,84 @@ class ThreadedSpinner:
         self.thread.join()
 
 
+@export
+class ProgressBarArray:
+    def __init__(self, delay=0.1):
+        self.delay = delay
+        import threading
+        self.is_end = threading.Event()
+        self.thread = None
+        self.canvas = PseudoCanvas()
+        self.index = {}
+        self.finished = {}
+        self.lines = []
+
+    def __len__(self):
+        return len(self.canvas)
+
+    def __setitem__(self, index, line):
+        if index is None:
+            index = f'bar-{len(self)+1}'
+
+        if index not in self.index:
+            self.index[index] = len(self)
+
+        try:
+            i = self.index[index]
+            self.canvas[i] = line
+        except IndexError:
+            self.canvas.append(line)
+
+        self.canvas.render()
+        return index
+
+    def __getitem__(self, index):
+        i = self.index.get(index)
+        if not i:
+            return None
+        return self.canvas[idx]
+
+    def __enter__(self):
+        if self.thread:
+            return self
+
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.end()
+        print()
+
+    def start(self):
+        if self.thread:
+            return
+
+        import threading
+        self.thread = threading.Thread(target=self.animate)
+        self.thread.daemon = True
+        self.thread.start()
+
+    def end(self, wait=True):
+        self.is_end.set()
+        if wait:
+            self.join()
+
+    def join(self):
+        self.thread.join()
+
+    def refresh(self):
+        self.canvas.render()
+
+    def animate(self):
+        import time
+
+        while not self.is_end.is_set():
+            # self.refresh()
+            time.sleep(self.delay)
+
+        # self.refresh()
+
+
 def alt_if_none(A, B):
     if A is None:
         return B
@@ -569,6 +647,7 @@ class PseudoCanvas:
         self.auto_append = auto_append
         self.lines = []
         self.dirty = []
+        self.more = 0
         self.avail_space = 0
         self.cursor = 0
 
@@ -578,6 +657,7 @@ class PseudoCanvas:
     def append(self, line=''):
         self.lines.append(line)
         self.dirty.append(True)
+        self.more += 1
 
     def extend(self, lines=[]):
         for line in lines:
@@ -616,6 +696,9 @@ class PseudoCanvas:
         term_width = term_size.columns
         term_height = term_size.lines
 
+        for i in range(min(term_height - self.avail_space, self.more) - (self.avail_space == 0)):
+            print()
+
         # Assumed that cursor is always at the end of last line
         from .lib_itertools import lookahead
         for (idx, line), is_last in lookahead(enumerate(self.lines)):
@@ -642,3 +725,5 @@ class PseudoCanvas:
 
             self.avail_space = min(term_height, max(self.avail_space, idx + 1))
             self.dirty[idx] = False
+
+        self.more = 0
