@@ -359,6 +359,8 @@ class FakeTerminal:
             # move cursor up/down
             direction = (1 if m.group(2) == 'B' else -1)
             self.cursor.y += int(m.group(1) or 1) * direction
+            if direction == 1:
+                self.cursor.y = min(self.cursor.y, len(self.canvas) - 1)
 
         elif m.fullmatch('\033' + r'\[(\d*)([CD])'):
             # move cursor right/left

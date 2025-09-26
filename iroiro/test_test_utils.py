@@ -330,6 +330,9 @@ class TestFakeTerminal(TestCase):
         self.eq(ft.cursor.y, 3)
         self.eq(ft.cursor.x, 3)
 
+        ft.puts('\033[100B')
+        self.eq(ft.cursor.y, 4)
+
     def test_escape_seq_cleareol(self):
         ft = iro.FakeTerminal()
         text = 'occuboinkal'
