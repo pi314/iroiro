@@ -158,6 +158,83 @@ class TestPager(TestCase):
             '\r哇 4\033[K'])
         self.terminal.recording = False
 
+    def test_append_on_the_fly(self):
+        self.terminal = FakeTerminal()
+        self.terminal.print('previous line')
+
+        pager = Pager()
+        pager.print = self.terminal.print
+        self.eq(pager.term_height, self.terminal.height)
+
+        pager.render()
+        self.eq(self.terminal.lines, [
+            'previous line',
+            '',
+            ])
+        self.eq(self.terminal.cursor.y, 1)
+
+        pager.append('line1')
+        self.terminal.recording = True
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\rline1\033[K',
+            ])
+        self.eq(self.terminal.cursor.y, 1)
+        self.eq(self.terminal.lines, [
+            'previous line',
+            'line1',
+            ])
+        self.terminal.recording = False
+
+        self.terminal.recording = True
+        pager.append('line2')
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\n',
+            '\rline2\033[K',
+            ])
+        self.eq(self.terminal.cursor.y, 2)
+        self.eq(self.terminal.lines, [
+            'previous line',
+            'line1',
+            'line2',
+            ])
+        self.terminal.recording = False
+
+        pager.append('line3')
+        self.terminal.recording = True
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\n',
+            '\rline3\033[K',
+            ])
+        self.eq(self.terminal.lines, [
+            'previous line',
+            'line1',
+            'line2',
+            'line3',
+            ])
+        self.terminal.recording = False
+
+        pager[0] = 'line1 new'
+        pager.append('line4')
+        self.terminal.recording = True
+        pager.render()
+        self.eq(self.terminal.recording, [
+            '\r\033[2A',
+            '\rline1 new\033[K\n',
+            '\r\033[1B\n',
+            '\rline4\033[K',
+            ])
+        self.eq(self.terminal.lines, [
+            'previous line',
+            'line1 new',
+            'line2',
+            'line3',
+            'line4',
+            ])
+        self.terminal.recording = False
+
     def test_pop_insert(self):
         pager = self.get_small_terminal_wah_pager()
         pager.render()

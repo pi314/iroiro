@@ -833,7 +833,7 @@ class Pager:
         # Skip out-of-screen lines, i.e. canvas size-- if terminal size--
         self._display = self._display[-self.term_height:] or [None]
 
-        visible_lines = list(self.preview)
+        visible_lines = self.preview
 
         cursor = len(self._display) - 1
 
@@ -862,7 +862,20 @@ class Pager:
             # Align cursor position
             if cursor != idx:
                 dist = min(abs(cursor - idx), len(self._display) - 1)
-                self.print('\r\033[{}{}'.format(dist, 'A' if cursor > idx else 'B'), end='')
+                if cursor > idx:
+                    self.print('\r\033[{}A'.format(dist), end='')
+                else:
+                    down = 0
+                    nl = 0
+                    for i in range(cursor + 1, idx + 1):
+                        if self._display[i] is None:
+                            nl += 1
+                        else:
+                            down += 1
+                    o = ''
+                    o += f'\r\033[{down}B' if down else ''
+                    o += ('\n' * nl) if nl else ''
+                    self.print(o, end='')
 
             wline = wrap(line, self.width)[0]
             self._display[idx] = wline
