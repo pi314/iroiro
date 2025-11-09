@@ -19,15 +19,16 @@ from .lib_tui import getch
 
 
 errors = []
-def pend_error(*errmsg):
+def add_error(*errmsg):
     errors.append(errmsg)
 
 
-def judge_errors():
-    if errors:
-        for error in errors:
-            print(*error)
-        sys.exit(1)
+def check_error():
+    if not errors:
+        return
+    for error in errors:
+        print(*error)
+    sys.exit(1)
 
 
 def parse_target(arg):
@@ -37,15 +38,12 @@ def parse_target(arg):
     ret = None
 
     to = []
-
     while True:
         m = rere(arg)
-
         if m.fullmatch(r'^(.+)\.(rgb|RGB|hsv|HSV)$'):
             to.append(m.group(2))
             arg = m.group(1)
             continue
-
         break
 
     if arg in lib_colors.names:
@@ -83,7 +81,7 @@ def parse_target(arg):
                 ret = ret.to_hsv()
                 tr_path += '.hsv'
         except AttributeError:
-            pend_error('Error: Cannot transform color', tr_path, 'to', t)
+            add_error('Error: Cannot transform color', tr_path, 'to', t)
 
     return ret
 
@@ -108,7 +106,7 @@ def spell_suggestion_err_msg(word):
         elif len(suggestions) == 3:
             err_msg += '"{}", "{}", or "{}"'.format(*suggestions)
         err_msg += '?'
-    pend_error(err_msg)
+    add_error(err_msg)
 
 
 class Inventory:
@@ -400,9 +398,9 @@ def main_list(args, gradient=False):
     if gradient:
         # argument handling for gradient
         if not args.targets:
-            pend_error('No colors to gradient')
+            add_error('No colors to gradient')
 
-        judge_errors()
+        check_error()
 
         targets = list(args.targets)
         path = []
@@ -458,9 +456,9 @@ def main_list(args, gradient=False):
             try:
                 n = int(arg_n, 10) if arg_n else None
             except:
-                pend_error('Invalid number: {}'.format(arg_n))
+                add_error('Invalid number: {}'.format(arg_n))
 
-            judge_errors()
+            check_error()
 
             expanded += [(g, color_text(g)) for g in lib_colors.gradient(src, dst, n, clockwise=args.clockwise)[1:]]
 
@@ -494,13 +492,13 @@ def main_list(args, gradient=False):
             else:
                 spell_suggestion_err_msg(arg)
 
-        judge_errors()
+        check_error()
 
     try:
         inventory.grep(args.grep)
     except re.PatternError as e:
-        pend_error('Invalid pattern:', e.pattern)
-        judge_errors()
+        add_error('Invalid pattern:', e.pattern)
+        check_error()
 
     inventory.sort(args.sort)
 
@@ -588,15 +586,15 @@ def main_hsv(args):
 
 def main_tile(args):
     if not args.targets:
-        pend_error('No colors to tile')
+        add_error('No colors to tile')
 
-    judge_errors()
+    check_error()
 
     tiles = [[]]
     for arg in args.targets:
         for token in arg.split('/'):
             if token in ('all', 'named'):
-                pend_error('"{}" cannot be used in tile mode'.format(token))
+                add_error('"{}" cannot be used in tile mode'.format(token))
                 continue
 
             t = parse_target(token)
@@ -608,7 +606,7 @@ def main_tile(args):
 
         tiles.append([])
 
-    judge_errors()
+    check_error()
 
     if not tiles[-1]:
         tiles.pop()
