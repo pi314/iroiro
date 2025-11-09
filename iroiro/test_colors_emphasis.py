@@ -69,11 +69,11 @@ class TestEmphasis(TestCase):
 
     def test_emphasis_or_with_color(self):
         bo = bold | orange
-        self.eq(bo('iro'), '\033[1;38;5;214miro\033[m')
+        self.eq(bo('iro'), '\033[1;38;2;255;165;0miro\033[m')
 
     def test_emphasis_or_with_paints(self):
         boy = bold | (orange / yellow)
-        self.eq(boy('iro'), '\033[1;38;5;214;48;5;11miro\033[m')
+        self.eq(boy('iro'), '\033[1;38;2;255;165;0;48;5;11miro\033[m')
 
     def test_emphasis_or_with_invalid_types(self):
         with self.raises(TypeError):
