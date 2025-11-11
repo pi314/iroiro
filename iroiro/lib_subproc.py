@@ -1,8 +1,10 @@
+import time
+import os
 import queue
 import subprocess as sub
 import threading
 
-from signal import SIGINT, SIGTERM
+from signal import SIGINT, SIGTERM, SIGKILL
 
 from .lib_itertools import is_iterable
 
@@ -530,3 +532,37 @@ def pipe(istream, *ostreams, start=True):
     if start:
         p.start()
     return p
+
+
+@export
+def is_parant_process_alive():
+    return os.getppid() != 1
+
+
+@export
+def is_parant_process_dead():
+    return not is_parant_process_alive()
+
+
+@export
+def self_nuke(*signum_list, timeout=3, how=[os.getpgrp, os.killpg]):
+    if not signum_list:
+        signum_list = [SIGTERM]
+
+    for signum in signum_list + [SIGKILL]:
+        pgrp = how[0]()
+        how[1](pgrp, signum)
+        time.sleep(timeout)
+
+
+@export
+def monitor_parant_process(interval=3, when=is_parant_process_dead, callback=self_nuke):
+    def loop():
+        while True:
+            if is_parant_process_dead():
+                callback()
+            time.sleep(interval)
+
+    t = threading.Thread(target=loop)
+    t.start()
+    return t
