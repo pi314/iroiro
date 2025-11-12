@@ -547,9 +547,9 @@ def is_parant_process_dead():
 @export
 def self_nuke(*signum_list, timeout=3, how=[os.getpgrp, os.killpg]):
     if not signum_list:
-        signum_list = [SIGTERM]
+        signum_list = tuple([SIGTERM])
 
-    for signum in signum_list + [SIGKILL]:
+    for signum in signum_list + tuple([SIGKILL]):
         pgrp = how[0]()
         how[1](pgrp, signum)
         time.sleep(timeout)

@@ -1,3 +1,4 @@
+import os
 import threading
 import queue
 
@@ -678,3 +679,27 @@ class TestPipe(TestCase):
         pp2.join()
 
         self.true(o.closed)
+
+    def test_is_parant_process_alive(self):
+        self.true(is_parant_process_alive())
+        self.false(is_parant_process_dead())
+
+    def test_self_nuke(self):
+        import random
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+
+        def mock_sleep(duration):
+            self.eq(duration, 3)
+        self.patch('time.sleep', mock_sleep)
+
+        def foo():
+            return os.getpid()
+
+        def bar(target, signum):
+            self.eq(target, os.getpid())
+            self.eq(signum, signal_list[0])
+            signal_list.pop(0)
+
+        signal_list = [SIGUSR1, SIGUSR2, SIGKILL]
+        interval = 3
+        self_nuke(SIGUSR1, SIGUSR2, how=(foo, bar))
