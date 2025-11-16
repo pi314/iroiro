@@ -326,6 +326,9 @@ class command:
                     stderr=self.proc_stderr,
                     env=self.env, **kwargs)
 
+            with _children_lock:
+                _children.append(self)
+
             def writer(self_stream, proc_stream):
                 for line in self_stream:
                     if self.encoding == False:
@@ -413,6 +416,8 @@ class command:
             try:
                 self.proc.wait(timeout)
                 self.returncode = self.proc.returncode
+                with _children_lock:
+                    _children.remove(self)
             except TimeoutExpired as e:
                 self.exception = e
             except KeyboardInterrupt as e:
@@ -544,25 +549,55 @@ def is_parant_process_dead():
     return not is_parant_process_alive()
 
 
-@export
-def self_nuke(*signum_list, timeout=3, how=[os.getpgrp, os.killpg]):
-    if not signum_list:
-        signum_list = tuple([SIGTERM])
+TERM_TIMEOUT = 3
 
-    for signum in signum_list + tuple([SIGKILL]):
-        pgrp = how[0]()
-        how[1](pgrp, signum)
+
+def term_pids(who=tuple(), signum=tuple(), timeout=TERM_TIMEOUT, how=None):
+    who_list = list(who)
+    if not who_list:
+        who_list = [os.getpid()]
+
+    signum_list = list(signum)
+    if not signum_list:
+        signum_list = [SIGTERM]
+
+    if how is os.getpid or how is os.kill:
+        how = [lambda x: x, os.kill]
+    else:
+        how = [os.getpgid, os.killpg]
+
+    for signum in signum_list + [SIGKILL]:
+        for who in who_list:
+            who = how[0](who)
+            how[1](who, signum)
         time.sleep(timeout)
 
 
 @export
-def monitor_parant_process(interval=3, when=is_parant_process_dead, callback=self_nuke):
+def terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None):
+    term_pids(who=[os.getpid()], signum=signum_list, timeout=timeout, how=how)
+
+
+@export
+def terminate_children(*signum_list, timeout=TERM_TIMEOUT, how=None):
+    term_pids(who=_children, signum=signum_list, timeout=timeout, how=how)
+
+
+@export
+def monitor_parant_process(interval=TERM_TIMEOUT, what=is_parant_process_dead, callback=terminate_self):
     def loop():
         while True:
-            if is_parant_process_dead():
+            if what():
                 callback()
             time.sleep(interval)
 
     t = threading.Thread(target=loop)
     t.start()
     return t
+
+
+_children_lock = threading.Lock()
+_children = []
+@export
+def children():
+    return [child for child in _children]

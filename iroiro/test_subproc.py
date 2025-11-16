@@ -680,11 +680,12 @@ class TestPipe(TestCase):
 
         self.true(o.closed)
 
+class TestChildrenManagement(TestCase):
     def test_is_parant_process_alive(self):
         self.true(is_parant_process_alive())
         self.false(is_parant_process_dead())
 
-    def test_self_nuke(self):
+    def test_term_self(self):
         import random
         from signal import SIGUSR1, SIGUSR2, SIGKILL
 
@@ -692,14 +693,35 @@ class TestPipe(TestCase):
             self.eq(duration, 3)
         self.patch('time.sleep', mock_sleep)
 
-        def foo():
-            return os.getpid()
+        my_pid = random.randrange(10000, 65536)
+        def mock_getpid():
+            return my_pid
+        self.patch('os.getpid', mock_getpid)
 
-        def bar(target, signum):
-            self.eq(target, os.getpid())
-            self.eq(signum, signal_list[0])
-            signal_list.pop(0)
+        def mock_getpgid(pid):
+            self.eq(pid, my_pid)
+            return my_pid
+        self.patch('os.getpgid', mock_getpgid)
 
-        signal_list = [SIGUSR1, SIGUSR2, SIGKILL]
-        interval = 3
-        self_nuke(SIGUSR1, SIGUSR2, how=(foo, bar))
+        def mock_kill(pid, signum):
+            audit.append(('os.kill', (pid, signum)))
+        self.patch('os.kill', mock_kill)
+
+        def mock_killpg(pgid, signum):
+            audit.append(('os.killpg', (pgid, signum)))
+        self.patch('os.killpg', mock_killpg)
+
+        audit = []
+        terminate_self(SIGUSR1, SIGUSR2)
+        self.eq(audit, [
+            ('os.killpg', (my_pid, SIGUSR1)),
+            ('os.killpg', (my_pid, SIGUSR2)),
+            ('os.killpg', (my_pid, SIGKILL)),
+            ])
+
+        audit = []
+        terminate_self(SIGUSR2, how=os.getpid)
+        self.eq(audit, [
+            ('os.kill', (my_pid, SIGUSR2)),
+            ('os.kill', (my_pid, SIGKILL)),
+            ])
