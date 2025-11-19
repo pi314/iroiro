@@ -552,10 +552,10 @@ def is_parant_process_dead():
 TERM_TIMEOUT = 3
 
 
-def term_pids(who=tuple(), signum=tuple(), timeout=TERM_TIMEOUT, how=None):
+def term_pids(who, signum=tuple(), timeout=TERM_TIMEOUT, how=None):
     who_list = list(who)
     if not who_list:
-        who_list = [os.getpid()]
+        return
 
     signum_list = list(signum)
     if not signum_list:
@@ -568,8 +568,11 @@ def term_pids(who=tuple(), signum=tuple(), timeout=TERM_TIMEOUT, how=None):
 
     for signum in signum_list + [SIGKILL]:
         for who in who_list:
-            who = how[0](who)
-            how[1](who, signum)
+            if isinstance(who, command):
+                who.signal(signum)
+            else:
+                who = how[0](who)
+                how[1](who, signum)
         time.sleep(timeout)
 
 
@@ -580,7 +583,8 @@ def terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None):
 
 @export
 def terminate_children(*signum_list, timeout=TERM_TIMEOUT, how=None):
-    term_pids(who=_children, signum=signum_list, timeout=timeout, how=how)
+    term_pids(who=[child for child in _children if child.proc],
+              signum=signum_list, timeout=timeout, how=how)
 
 
 @export

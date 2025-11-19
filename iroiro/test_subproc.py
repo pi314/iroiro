@@ -681,47 +681,59 @@ class TestPipe(TestCase):
         self.true(o.closed)
 
 class TestChildrenManagement(TestCase):
-    def test_is_parant_process_alive(self):
-        self.true(is_parant_process_alive())
-        self.false(is_parant_process_dead())
-
-    def test_term_self(self):
+    def setUp(self):
         import random
         from signal import SIGUSR1, SIGUSR2, SIGKILL
+
+        self.log = []
 
         def mock_sleep(duration):
             self.eq(duration, 3)
         self.patch('time.sleep', mock_sleep)
 
-        my_pid = random.randrange(10000, 65536)
+        self.pid = random.randrange(10000, 65536)
         def mock_getpid():
-            return my_pid
+            return self.pid
         self.patch('os.getpid', mock_getpid)
 
         def mock_getpgid(pid):
-            self.eq(pid, my_pid)
-            return my_pid
+            self.eq(pid, self.pid)
+            return self.pid
         self.patch('os.getpgid', mock_getpgid)
 
         def mock_kill(pid, signum):
-            audit.append(('os.kill', (pid, signum)))
+            self.log.append(('os.kill', (pid, signum)))
         self.patch('os.kill', mock_kill)
 
         def mock_killpg(pgid, signum):
-            audit.append(('os.killpg', (pgid, signum)))
+            self.log.append(('os.killpg', (pgid, signum)))
         self.patch('os.killpg', mock_killpg)
 
-        audit = []
-        terminate_self(SIGUSR1, SIGUSR2)
-        self.eq(audit, [
-            ('os.killpg', (my_pid, SIGUSR1)),
-            ('os.killpg', (my_pid, SIGUSR2)),
-            ('os.killpg', (my_pid, SIGKILL)),
+    def test_is_parant_process_alive(self):
+        self.true(is_parant_process_alive())
+        self.false(is_parant_process_dead())
+
+    def test_term_self_without_signum(self):
+        from signal import SIGUSR1, SIGUSR2, SIGKILL, SIGTERM
+        terminate_self()
+        self.eq(self.log, [
+            ('os.killpg', (self.pid, SIGTERM)),
+            ('os.killpg', (self.pid, SIGKILL)),
             ])
 
-        audit = []
+    def test_term_self_with_signum(self):
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+        terminate_self(SIGUSR1, SIGUSR2)
+        self.eq(self.log, [
+            ('os.killpg', (self.pid, SIGUSR1)),
+            ('os.killpg', (self.pid, SIGUSR2)),
+            ('os.killpg', (self.pid, SIGKILL)),
+            ])
+
+    def test_term_self_with_how(self):
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
         terminate_self(SIGUSR2, how=os.getpid)
-        self.eq(audit, [
-            ('os.kill', (my_pid, SIGUSR2)),
-            ('os.kill', (my_pid, SIGKILL)),
+        self.eq(self.log, [
+            ('os.kill', (self.pid, SIGUSR2)),
+            ('os.kill', (self.pid, SIGKILL)),
             ])
