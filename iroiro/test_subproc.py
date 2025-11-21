@@ -383,11 +383,18 @@ class TestSubproc(TestCase):
             checkpoint.wait()
 
         p = command(prog)
+        self.false(p.alive)
+
         p.run(wait=False)
+        self.true(p.alive)
+
         checkpoint.check(False)
         p.wait(False)
         checkpoint.check(False)
+
         checkpoint.set()
+        p.wait()
+        self.false(p.alive)
 
     def test_wait_invalid_types(self):
         def prog(proc, *args): # pragma: no cover
@@ -460,7 +467,7 @@ class TestSubproc(TestCase):
         self.eq(p.signaled, None)
 
         p.kill(signal.SIGKILL)
-        self.eq(p.signaled, signal.SIGKILL)
+        self.eq(p.signaled, None)
 
     def test_kill_sigint_pass_to_child_process(self):
         import signal
@@ -490,6 +497,9 @@ class TestSubproc(TestCase):
             def send_signal(self, signal):
                 self.received_signal = signal
                 self.returncode = -int(signal)
+
+            def poll(self):
+                return self.returncode or None
 
         self.patch('subprocess.Popen', MockPopen)
 

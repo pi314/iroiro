@@ -271,6 +271,14 @@ class command:
     def killed(self):
         return self.signaled
 
+    @property
+    def alive(self):
+        if self.proc:
+            return self.proc.poll() is None
+        if self.thread:
+            return self.thread.is_alive()
+        return False
+
     def __repr__(self):
         return f'<command [{self.cmd[0]}] ({hex(id(self))})>'
 
@@ -451,6 +459,8 @@ class command:
             t.join()
 
     def signal(self, signal):
+        if not self.alive:
+            return
         if self.proc:
             self.proc.send_signal(signal)
         self.signaled.set(signal)
