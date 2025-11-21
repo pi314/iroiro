@@ -688,7 +688,7 @@ class TestChildrenManagement(TestCase):
         self.log = []
 
         def mock_sleep(duration):
-            self.eq(duration, 3)
+            self.log.append(('time.sleep', duration))
         self.patch('time.sleep', mock_sleep)
 
         self.pid = random.randrange(10000, 65536)
@@ -718,7 +718,9 @@ class TestChildrenManagement(TestCase):
         terminate_self()
         self.eq(self.log, [
             ('os.killpg', (self.pid, SIGTERM)),
+            ('time.sleep', 3),
             ('os.killpg', (self.pid, SIGKILL)),
+            ('time.sleep', 3),
             ])
 
     def test_term_self_with_signum(self):
@@ -726,8 +728,11 @@ class TestChildrenManagement(TestCase):
         terminate_self(SIGUSR1, SIGUSR2)
         self.eq(self.log, [
             ('os.killpg', (self.pid, SIGUSR1)),
+            ('time.sleep', 3),
             ('os.killpg', (self.pid, SIGUSR2)),
+            ('time.sleep', 3),
             ('os.killpg', (self.pid, SIGKILL)),
+            ('time.sleep', 3),
             ])
 
     def test_term_self_with_how(self):
@@ -735,5 +740,19 @@ class TestChildrenManagement(TestCase):
         terminate_self(SIGUSR2, how=os.getpid)
         self.eq(self.log, [
             ('os.kill', (self.pid, SIGUSR2)),
+            ('time.sleep', 3),
             ('os.kill', (self.pid, SIGKILL)),
+            ('time.sleep', 3),
+            ])
+
+    def test_term_self_with_timeout(self):
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+        terminate_self(SIGUSR1, SIGUSR2, timeout=86400)
+        self.eq(self.log, [
+            ('os.killpg', (self.pid, SIGUSR1)),
+            ('time.sleep', 86400),
+            ('os.killpg', (self.pid, SIGUSR2)),
+            ('time.sleep', 86400),
+            ('os.killpg', (self.pid, SIGKILL)),
+            ('time.sleep', 86400),
             ])
