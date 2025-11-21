@@ -271,6 +271,9 @@ class command:
     def killed(self):
         return self.signaled
 
+    def __repr__(self):
+        return f'<command [{self.cmd[0]}] ({hex(id(self))})>'
+
     def __getitem__(self, idx):
         return [self.stdin, self.stdout, self.stderr][idx]
 

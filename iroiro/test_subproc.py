@@ -157,6 +157,11 @@ class TestSubproc(TestCase):
 
         p = run(prog, stdin='line', stdout=False, stderr=False)
 
+        p = command(['iroiro', 'arg1', 'arg2'])
+        self.true('command' in repr(p))
+        self.true(hex(id(p)) in repr(p))
+        self.true('iroiro' in repr(p))
+
     def test_stdout(self):
         p = run('seq 5'.split())
         self.eq(p.stdout.lines, '1 2 3 4 5'.split())
