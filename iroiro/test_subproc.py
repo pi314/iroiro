@@ -470,6 +470,7 @@ class TestSubproc(TestCase):
                 self.args = args
                 self.kwargs = kwargs
                 self.received_signal = None
+                self.returncode = None
 
                 class MockStream:
                     def __init__(self):
@@ -483,10 +484,12 @@ class TestSubproc(TestCase):
                 self.stderr = MockStream()
 
             def wait(self, timeout=None):
-                raise exception
+                if not self.received_signal:
+                    raise exception
 
             def send_signal(self, signal):
                 self.received_signal = signal
+                self.returncode = -int(signal)
 
         self.patch('subprocess.Popen', MockPopen)
 
@@ -497,6 +500,7 @@ class TestSubproc(TestCase):
             self.fail()
         self.eq(p.signaled, signal.SIGINT)
         self.eq(p.proc.received_signal, signal.SIGINT)
+        p.kill()
 
         exception = OSError()
         p = command(['sleep', '86400'])
@@ -505,6 +509,7 @@ class TestSubproc(TestCase):
             self.fail()
         self.eq(p.signaled, signal.SIGTERM)
         self.eq(p.proc.received_signal, signal.SIGTERM)
+        p.kill()
 
     def test_read_stdout_twice(self):
         ans = '1 2 3 4 5'.split()
@@ -761,3 +766,8 @@ class TestChildrenManagement(TestCase):
             ('os.killpg', (self.pid, SIGKILL)),
             ('time.sleep', 86400),
             ])
+
+    def test_term_children_when_no_children(self):
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+        terminate_children(SIGUSR1, SIGUSR2)
+        self.eq(self.log, [])

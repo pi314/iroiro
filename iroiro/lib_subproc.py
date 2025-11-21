@@ -416,6 +416,7 @@ class command:
 
         # Wait for child process to finish
         if self.proc:
+            self.exception = None
             try:
                 self.proc.wait(timeout)
                 self.returncode = self.proc.returncode
@@ -458,16 +459,7 @@ class command:
         self.signal(signal)
 
         if self.proc:
-            self.proc.wait()
-            for proc_stream in (
-                    self.proc.stdin,
-                    self.proc.stdout,
-                    self.proc.stderr
-                    ):
-                if proc_stream:
-                    proc_stream.close()
-
-            self.returncode = self.proc.returncode
+            self.wait()
 
         if self.thread:
             self.thread.join()
@@ -586,7 +578,7 @@ def terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None):
 
 @export
 def terminate_children(*signum_list, timeout=TERM_TIMEOUT, how=None):
-    term_pids(who=[child for child in _children if child.proc],
+    term_pids(who=[child for child in children() if child.proc],
               signum=signum_list, timeout=timeout, how=how)
 
 
