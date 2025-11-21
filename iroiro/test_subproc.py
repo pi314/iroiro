@@ -701,7 +701,7 @@ class TestPipe(TestCase):
         self.true(o.closed)
 
 class TestChildrenManagement(TestCase):
-    def setUp(self):
+    def patch_pid_funcions(self):
         import random
         from signal import SIGUSR1, SIGUSR2, SIGKILL
 
@@ -734,6 +734,8 @@ class TestChildrenManagement(TestCase):
         self.false(is_parant_process_dead())
 
     def test_term_self_without_signum(self):
+        self.patch_pid_funcions()
+
         from signal import SIGUSR1, SIGUSR2, SIGKILL, SIGTERM
         terminate_self()
         self.eq(self.log, [
@@ -744,6 +746,8 @@ class TestChildrenManagement(TestCase):
             ])
 
     def test_term_self_with_signum(self):
+        self.patch_pid_funcions()
+
         from signal import SIGUSR1, SIGUSR2, SIGKILL
         terminate_self(SIGUSR1, SIGUSR2)
         self.eq(self.log, [
@@ -756,6 +760,8 @@ class TestChildrenManagement(TestCase):
             ])
 
     def test_term_self_with_how(self):
+        self.patch_pid_funcions()
+
         from signal import SIGUSR1, SIGUSR2, SIGKILL
         terminate_self(SIGUSR2, how=os.getpid)
         self.eq(self.log, [
@@ -766,6 +772,8 @@ class TestChildrenManagement(TestCase):
             ])
 
     def test_term_self_with_timeout(self):
+        self.patch_pid_funcions()
+
         from signal import SIGUSR1, SIGUSR2, SIGKILL
         terminate_self(SIGUSR1, SIGUSR2, timeout=86400)
         self.eq(self.log, [
@@ -778,6 +786,33 @@ class TestChildrenManagement(TestCase):
             ])
 
     def test_term_children_when_no_children(self):
+        self.patch_pid_funcions()
+
+        self.eq(children(), [])
+
         from signal import SIGUSR1, SIGUSR2, SIGKILL
         terminate_children(SIGUSR1, SIGUSR2)
         self.eq(self.log, [])
+
+    def test_term_children(self):
+        from signal import SIGTERM, SIGKILL
+
+        self.eq(children(), [])
+
+        import time
+        def prog(proc, *args):
+            proc.signaled.wait()
+        p1 = command(prog)
+        p1.run(wait=False)
+        self.eq(children(), [p1])
+
+        p2 = command(['sleep', 86400])
+        p2.run(wait=False)
+        self.eq(children(), [p1, p2])
+
+        terminate_children(timeout=0.1)
+        self.false(p1.alive)
+        self.false(p2.alive)
+        self.eq(p1.signaled, SIGTERM)
+        self.eq(p2.signaled, SIGTERM)
+        self.eq(children(), [])

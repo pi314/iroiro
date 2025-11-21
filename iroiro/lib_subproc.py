@@ -315,6 +315,7 @@ class command:
             self.thread = threading.Thread(target=worker)
             self.thread.daemon = True
             self.thread.start()
+            _watch_child(self)
 
         else:
             if self.encoding == False:
@@ -336,9 +337,7 @@ class command:
                     stdout=self.proc_stdout,
                     stderr=self.proc_stderr,
                     env=self.env, **kwargs)
-
-            with _children_lock:
-                _children.append(self)
+            _watch_child(self)
 
             def writer(self_stream, proc_stream):
                 for line in self_stream:
@@ -428,8 +427,7 @@ class command:
             try:
                 self.proc.wait(timeout)
                 self.returncode = self.proc.returncode
-                with _children_lock:
-                    _children.remove(self)
+                _unwatch_child(self)
             except TimeoutExpired as e:
                 self.exception = e
             except KeyboardInterrupt as e:
@@ -441,6 +439,7 @@ class command:
 
         if self.thread:
             self.thread.join(timeout)
+            _unwatch_child(self)
 
         # Wait too early
         if self.proc is None and self.thread is None:
@@ -588,8 +587,7 @@ def terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None):
 
 @export
 def terminate_children(*signum_list, timeout=TERM_TIMEOUT, how=None):
-    term_pids(who=[child for child in children() if child.proc],
-              signum=signum_list, timeout=timeout, how=how)
+    term_pids(who=children(), signum=signum_list, timeout=timeout, how=how)
 
 
 @export
@@ -605,8 +603,25 @@ def monitor_parant_process(interval=TERM_TIMEOUT, what=is_parant_process_dead, c
     return t
 
 
-_children_lock = threading.Lock()
+_children_lock = threading.RLock()
 _children = []
+
+def _watch_child(child):
+    with _children_lock:
+        _children.append(child)
+
+
+def _unwatch_child(child):
+    with _children_lock:
+        try:
+            _children.remove(child)
+        except: # pragma: no cover
+            pass
+
 @export
 def children():
-    return [child for child in _children]
+    with _children_lock:
+        for child in list(_children):
+            if not child.alive:
+                _unwatch_child(child)
+        return list(_children)
