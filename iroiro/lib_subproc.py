@@ -553,6 +553,30 @@ def is_parant_process_dead():
     return not is_parant_process_alive()
 
 
+_children_lock = threading.RLock()
+_children = []
+
+def _watch_child(child):
+    with _children_lock:
+        _children.append(child)
+
+
+def _unwatch_child(child):
+    with _children_lock:
+        try:
+            _children.remove(child)
+        except: # pragma: no cover
+            pass
+
+@export
+def children():
+    with _children_lock:
+        for child in list(_children):
+            if not child.alive:
+                _unwatch_child(child)
+        return list(_children)
+
+
 TERM_TIMEOUT = 3
 
 
@@ -600,27 +624,3 @@ def monitor_parant_process(interval=TERM_TIMEOUT, cond=is_parant_process_alive, 
     t = threading.Thread(target=loop)
     t.start()
     return t
-
-
-_children_lock = threading.RLock()
-_children = []
-
-def _watch_child(child):
-    with _children_lock:
-        _children.append(child)
-
-
-def _unwatch_child(child):
-    with _children_lock:
-        try:
-            _children.remove(child)
-        except: # pragma: no cover
-            pass
-
-@export
-def children():
-    with _children_lock:
-        for child in list(_children):
-            if not child.alive:
-                _unwatch_child(child)
-        return list(_children)

@@ -137,6 +137,32 @@ It's a subclass of `threading.Event` thus can be `.wait()`.
 
 An alias to `signaled`.
 
+#### `command.alive`
+
+Returns `True` if the `command` is running. `False` otherwise.
+
+
+#### `command.__getitem__(idx)`
+
+__Trivia__
+```python
+cmd = command(...)
+cmd[0] is cmd.stdin
+cmd[1] is cmd.stdout
+cmd[2] is cmd.stderr
+```
+
+
+#### `command.__enter__()`
+
+`command` objects support context manager protocol:
+
+```python
+with command(...) as cmd:
+    ...
+    # __exit__(): cmd.wait()
+```
+
 
 ### Stream object methods and properties
 
@@ -206,3 +232,65 @@ pipe2 = pipe(p2.stdout, p3.stdin)
 pipe1.join()
 pipe2.join()
 ```
+
+
+## is_parant_process_alive()
+## is_parant_process_dead()
+
+Check if parent process is alive or not.
+
+
+## children()
+
+Returns `[command]` of current running children
+
+
+## terminate_self()
+
+Send signal(s) to current process.
+
+__Parameters__
+```python
+terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None)
+```
+
+*   The default value of `signum_list` is `[SIGTERM]`.
+*   If `how` is `os.getpid` or `os.kill`, `os.getpid` and `os.kill` is used.
+    Otherwise, `os.getpgid` and `os.pgkill` is used.
+*   `timeout` has default value `3` seconds. Used to sleep between each signal.
+
+After all signals in `signum_list` are sent, `SIGKILL` is sent.
+
+__Examples__
+```python
+terminate_self(SIGUSR2, SIGTERM)
+# Roughly equal to the following:
+# os.killpg(os.getpgid(), SIGUSR2)
+# time.sleep(3)
+# os.killpg(os.getpgid(), SIGTERM)
+# time.sleep(3)
+# os.killpg(os.getpgid(), SIGKILL)
+# time.sleep(3)
+```
+
+__Examples__
+```python
+terminate_self(SIGUSR2, timeout=1.5, how=os.getpid)
+# Roughly equal to the following:
+# os.kill(SIGUSR2)
+# time.sleep(1.5)
+# os.kill(SIGKILL)
+# time.sleep(1.5)
+```
+
+
+## terminate_children()
+
+Send signal(s) to childrens created through `command` interface.
+
+__Parameters__
+```python
+terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None)
+```
+
+The usage is the same as `terminate_self()`
