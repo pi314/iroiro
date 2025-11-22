@@ -234,18 +234,18 @@ pipe2.join()
 ```
 
 
-## is_parant_process_alive()
-## is_parant_process_dead()
+## `is_parant_process_alive()`
+## `is_parant_process_dead()`
 
 Check if parent process is alive or not.
 
 
-## children()
+## `children()`
 
 Returns `[command]` of current running children
 
 
-## terminate_self()
+## `terminate_self()`
 
 Send signal(s) to current process.
 
@@ -257,7 +257,7 @@ terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None)
 *   The default value of `signum_list` is `[SIGTERM]`.
 *   If `how` is `os.getpid` or `os.kill`, `os.getpid` and `os.kill` is used.
     Otherwise, `os.getpgid` and `os.pgkill` is used.
-*   `timeout` has default value `3` seconds. Used to sleep between each signal.
+*   `timeout` has default value `3` seconds. Used to sleep after each signal.
 
 After all signals in `signum_list` are sent, `SIGKILL` is sent.
 
@@ -277,14 +277,14 @@ __Examples__
 ```python
 terminate_self(SIGUSR2, timeout=1.5, how=os.getpid)
 # Roughly equal to the following:
-# os.kill(SIGUSR2)
+# os.kill(os.getpid(), SIGUSR2)
 # time.sleep(1.5)
-# os.kill(SIGKILL)
+# os.kill(os.getpid(), SIGKILL)
 # time.sleep(1.5)
 ```
 
 
-## terminate_children()
+## `terminate_children()`
 
 Send signal(s) to childrens created through `command` interface.
 
