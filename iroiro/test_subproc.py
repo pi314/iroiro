@@ -816,3 +816,20 @@ class TestChildrenManagement(TestCase):
         self.eq(p1.signaled, SIGTERM)
         self.eq(p2.signaled, SIGTERM)
         self.eq(children(), [])
+
+    def test_monitor_thread(self):
+        parent_proc_alive = True
+        def mock_is_parant_process_alive():
+            return parent_proc_alive
+
+        callback_checkpoint = self.checkpoint()
+        def mock_terminate_self():
+            callback_checkpoint.set()
+
+        t = monitor_parant_process(interval=0.1,
+                                   cond=mock_is_parant_process_alive,
+                                   callback=mock_terminate_self)
+
+        parent_proc_alive = False
+        t.join()
+        callback_checkpoint.check()

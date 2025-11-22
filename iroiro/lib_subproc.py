@@ -591,12 +591,11 @@ def terminate_children(*signum_list, timeout=TERM_TIMEOUT, how=None):
 
 
 @export
-def monitor_parant_process(interval=TERM_TIMEOUT, what=is_parant_process_dead, callback=terminate_self):
+def monitor_parant_process(interval=TERM_TIMEOUT, cond=is_parant_process_alive, callback=terminate_self):
     def loop():
-        while True:
-            if what():
-                callback()
+        while cond():
             time.sleep(interval)
+        callback()
 
     t = threading.Thread(target=loop)
     t.start()
