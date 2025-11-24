@@ -376,7 +376,7 @@ class TestSubproc(TestCase):
         # If this test fails, make sure to check the initial input
         self.eq(p.stdout.lines[-1], 1, p.stdin.lines[0])
 
-    def test_wait_false(self):
+    def test_wait_timeouts(self):
         checkpoint = self.checkpoint()
 
         def prog(proc, *args):
@@ -388,12 +388,15 @@ class TestSubproc(TestCase):
         p.run(wait=False)
         self.true(p.alive)
 
-        checkpoint.check(False)
-        p.wait(False)
-        checkpoint.check(False)
+        self.false(p.wait(False))
+        self.true(p.alive)
+
+        self.false(p.wait(timeout=0.01))
+        self.true(p.alive)
 
         checkpoint.set()
-        p.wait()
+        self.true(p.wait())
+        self.true(p.wait(False))
         self.false(p.alive)
 
     def test_wait_invalid_types(self):
@@ -406,15 +409,12 @@ class TestSubproc(TestCase):
         self.eq(p.proc, None)
         self.eq(p.thread, None)
 
-    def test_timeout(self):
+    def test_run_timeout(self):
         import time
-
         p = command(['sleep', 3])
         t1 = time.time()
-        try:
-            p.run(wait=0.1)
-        except TimeoutExpired:
-            pass
+        p.run(wait=0.1)
+        self.true(p.alive)
         t2 = time.time()
         self.le(t2 - t1, 1)
         p.kill()
@@ -816,6 +816,21 @@ class TestChildrenManagement(TestCase):
         self.eq(p1.signaled, SIGTERM)
         self.eq(p2.signaled, SIGTERM)
         self.eq(children(), [])
+
+    def test_children_wait(self):
+        from signal import SIGUSR1
+
+        self.eq(children(), [])
+        def prog(proc, *args):
+            proc.signaled.wait()
+
+        p1 = command(prog)
+        p1.run(wait=False)
+        self.eq(children(), [p1])
+
+        self.false(children().wait(timeout=0.01))
+        p1.signal(SIGUSR1)
+        self.true(children().wait(timeout=0.01))
 
     def test_monitor_thread(self):
         parent_proc_alive = True

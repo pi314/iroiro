@@ -108,7 +108,7 @@ Check the process status and return the status code.
 
 #### `command.wait(timeout=None)`
 
-Wait the process to finish for `timeout` seconds.
+Wait the process to finish for `timeout` seconds, and then return `not command.alive`.
 
 *   If `timeout` is `True` or `None`, it waits for the command to finish.
 *   If `timeout` is `False`, it returns immediately.
@@ -294,3 +294,10 @@ terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None)
 ```
 
 The usage is the same as `terminate_self()`
+
+
+## `children()`
+
+Return a list of active children.
+
+`children().wait()` could be called to wait for all of them.

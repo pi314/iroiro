@@ -5,15 +5,12 @@ import subprocess as sub
 import threading
 
 from signal import SIGINT, SIGTERM, SIGKILL
+from collections import UserList
 
 from .lib_itertools import is_iterable
 
 from .internal_utils import exporter
 export, __all__ = exporter()
-
-
-export('TimeoutExpired')
-TimeoutExpired = sub.TimeoutExpired
 
 
 @export
@@ -88,20 +85,14 @@ class stream:
                 raise TypeError('Invalid subscriber value: {}'.format(repr(subscriber)))
 
     def pipe_attached(self):
-        self.pipe_count_lock.acquire()
-        try:
+        with self.pipe_count_lock:
             self.pipe_count += 1
-        finally:
-            self.pipe_count_lock.release()
 
     def pipe_detached(self):
-        self.pipe_count_lock.acquire()
-        try:
+        with self.pipe_count_lock:
             self.pipe_count -= 1
             if self.pipe_count <= 0:
                 self.close()
-        finally:
-            self.pipe_count_lock.release()
 
     def read(self):
         data = self.queue.get()
@@ -315,7 +306,7 @@ class command:
             self.thread = threading.Thread(target=worker)
             self.thread.daemon = True
             self.thread.start()
-            _watch_child(self)
+            _children.append(self)
 
         else:
             if self.encoding == False:
@@ -337,7 +328,7 @@ class command:
                     stdout=self.proc_stdout,
                     stderr=self.proc_stderr,
                     env=self.env, **kwargs)
-            _watch_child(self)
+            _children.append(self)
 
             def writer(self_stream, proc_stream):
                 for line in self_stream:
@@ -419,7 +410,11 @@ class command:
         if timeout is True:
             timeout = None
         elif timeout is False:
-            return
+            return not self.alive
+
+        # Wait too early
+        if self.proc is None and self.thread is None:
+            return False
 
         # Wait for child process to finish
         if self.proc:
@@ -427,9 +422,9 @@ class command:
             try:
                 self.proc.wait(timeout)
                 self.returncode = self.proc.returncode
-                _unwatch_child(self)
-            except TimeoutExpired as e:
-                self.exception = e
+                _children.discard(self)
+            except sub.TimeoutExpired as e:
+                return False
             except KeyboardInterrupt as e:
                 self.signal(SIGINT)
                 self.exception = e
@@ -438,12 +433,10 @@ class command:
                 self.exception = e
 
         if self.thread:
-            self.thread.join(timeout)
-            _unwatch_child(self)
-
-        # Wait too early
-        if self.proc is None and self.thread is None:
-            return
+            self.thread.join(timeout=timeout)
+            if self.alive:
+                return False
+            _children.discard(self)
 
         if self.exception:
             raise self.exception
@@ -457,6 +450,8 @@ class command:
         for t in self.io_threads:
             t.join()
 
+        return True
+
     def signal(self, signal):
         if not self.alive:
             return
@@ -466,10 +461,8 @@ class command:
 
     def kill(self, signal=SIGTERM):
         self.signal(signal)
-
         if self.proc:
             self.wait()
-
         if self.thread:
             self.thread.join()
 
@@ -553,28 +546,53 @@ def is_parant_process_dead():
     return not is_parant_process_alive()
 
 
-_children_lock = threading.RLock()
-_children = []
+class Children(UserList):
+    def __init__(self, data=None):
+        super().__init__(data)
+        self.rlock = threading.RLock()
 
-def _watch_child(child):
-    with _children_lock:
-        _children.append(child)
+    def __enter__(self):
+        self.rlock.acquire()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.rlock.release()
+
+    def __len__(self):
+        with self:
+            return len(self.data)
+
+    def append(self, child):
+        with self:
+            self.data.append(child)
+
+    def discard(self, child):
+        with self:
+            try:
+                self.data.remove(child)
+            except: # pragma: no cover
+                pass
+
+    def refresh(self):
+        with self:
+            for child in list(self.data):
+                if not child.alive:
+                    self.discard(child)
+
+    def wait(self, timeout=None):
+        snapshot = list(self.data)
+        ret = True
+        for child in snapshot:
+            ret = ret and child.wait(timeout=timeout)
+        return ret
 
 
-def _unwatch_child(child):
-    with _children_lock:
-        try:
-            _children.remove(child)
-        except: # pragma: no cover
-            pass
+_children = Children()
+
 
 @export
 def children():
-    with _children_lock:
-        for child in list(_children):
-            if not child.alive:
-                _unwatch_child(child)
-        return list(_children)
+    _children.refresh()
+    return _children
 
 
 TERM_TIMEOUT = 3
@@ -611,7 +629,7 @@ def terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None):
 
 @export
 def terminate_children(*signum_list, timeout=TERM_TIMEOUT, how=None):
-    term_pids(who=children(), signum=signum_list, timeout=timeout, how=how)
+    term_pids(who=_children, signum=signum_list, timeout=timeout, how=how)
 
 
 @export
