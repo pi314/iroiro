@@ -357,7 +357,7 @@ with a few extensions.
 The 256-color index or the RGB value of the colors are listed as following:
 
 | Color                  | Index or RGB Value |
-|------------------------+--------------------|
+|------------------------|--------------------|
 | `black`                | 0                  |
 | `maroon`               | 1                  |
 | `green`                | 2                  |
