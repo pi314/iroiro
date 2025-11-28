@@ -29,7 +29,7 @@ path = "iroiro/__init__.py"
 
 
 [project.scripts]
-iroiro = "iroiro:bin.iro.main"
+iroiro = "iroiro:bin.iroiro.main"
 palette = "iroiro:bin.palette.main"
 rainbow = "iroiro:bin.rainbow.main"
 sponge = "iroiro:bin.sponge.main"

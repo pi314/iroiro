@@ -95,7 +95,7 @@ assert v1.map(lambda x: 3 * x + 1) == (4, 7, 10)
 ```
 
 
-## `interval(a, b, close=True)`
+## `interval(a, b, *, close=True)`
 
 Returns a `List[int]` that starts from `a` and ends with `b`.
 

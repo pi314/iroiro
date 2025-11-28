@@ -5,16 +5,38 @@ This document describes the API set provided by `iroiro.tui`.
 For the index of this package, see [iroiro.md](iroiro.md).
 
 
+## `charwidth()`
+
+Return the "display width" of a character (`len=1` `str`.)
+
+__Parameters__
+```python
+charwidth(c)
+```
+
+Equals to `1 + (unicodedata.east_asian_width(c) in 'WF')`.
+
+Printable ASCII characters are counted as width 1, and CJK characters are counted as width 2.
+
+__Examples__
+```python
+charwidth('test') -> TypeError
+assert charwidth('t') == 1
+assert charwidth('哇') == 2
+assert charwidth('😂') == 2
+```
+
+
 ## `strwidth()`
 
-Return the "display width" of the string.
+Return the "display width" of a string.
 
 __Parameters__
 ```python
 strwidth(s)
 ```
 
-Printable ASCII characters are counted as width 1, and CJK characters are counted as width 2.
+`charwidth()` is called for calculating the display width of each indivisual characters.
 
 Color escape sequences are ignored.
 
@@ -23,6 +45,30 @@ __Examples__
 assert strwidth('test') == 4
 assert strwidth('\033[38;5;214mtest\033[m') == 4
 assert strwidth('哇嗚') == 4
+```
+
+## `wrap()`
+
+Wrap the string with width limit.
+
+__Parameters__
+```python
+wrap(s, width, clip=None)
+```
+
+This function returns a 2-tuple containing two strings.  
+The first string should be able to fit into `width`.
+The second string is the remaining string.
+
+If `clip` is specified and it's a single width character, it will be appended
+to the first string if `width` limit is inside a character.
+
+__Examples__
+```python
+assert wrap('test', 3) == ('tes', 't')
+assert wrap('t') == 1
+assert wrap('嗚啦呀哈', 5) == ('嗚啦', '呀哈')
+assert wrap('嗚啦呀哈', 5, clip='>') == ('嗚啦>', '呀哈')
 ```
 
 

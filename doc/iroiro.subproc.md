@@ -25,7 +25,8 @@ It's like writing a pipeline with a lot of `awk`, `sed`, `grep`, etc, without le
 ### Parameters
 
 ```python
-command(self, cmd=None, *,
+command(self, cmd, *,
+        cwd=None,
         stdin=None, stdout=True, stderr=True,
         encoding='utf8', rstrip='\r\n',
         bufsize=-1,
@@ -49,6 +50,10 @@ command(self, cmd=None, *,
         +   Callable
             *   `lambda proc: ...`
             *   `[(lambda proc, *args: ...), 'bar', 'baz']` (a callable with arguments)
+
+*   `cwd` (default: `None`)
+    -   The working directory for the command to run.
+    -   Only works for external command, and is ignored if `cmd` is a `callable`.
 
 *   `stdin` (default: `None`)
     -   If `stdin` is `None` or `False`, the stream is closed.
@@ -103,7 +108,7 @@ Check the process status and return the status code.
 
 #### `command.wait(timeout=None)`
 
-Wait the process to finish for `timeout` seconds.
+Wait the process to finish for `timeout` seconds, and then return `not command.alive`.
 
 *   If `timeout` is `True` or `None`, it waits for the command to finish.
 *   If `timeout` is `False`, it returns immediately.
@@ -131,6 +136,32 @@ It's a subclass of `threading.Event` thus can be `.wait()`.
 #### `command.killed`
 
 An alias to `signaled`.
+
+#### `command.alive`
+
+Returns `True` if the `command` is running. `False` otherwise.
+
+
+#### `command.__getitem__(idx)`
+
+__Trivia__
+```python
+cmd = command(...)
+cmd[0] is cmd.stdin
+cmd[1] is cmd.stdout
+cmd[2] is cmd.stderr
+```
+
+
+#### `command.__enter__()`
+
+`command` objects support context manager protocol:
+
+```python
+with command(...) as cmd:
+    ...
+    # __exit__(): cmd.wait()
+```
 
 
 ### Stream object methods and properties
@@ -201,3 +232,72 @@ pipe2 = pipe(p2.stdout, p3.stdin)
 pipe1.join()
 pipe2.join()
 ```
+
+
+## `is_parant_process_alive()`
+## `is_parant_process_dead()`
+
+Check if parent process is alive or not.
+
+
+## `children()`
+
+Returns `[command]` of current running children
+
+
+## `terminate_self()`
+
+Send signal(s) to current process.
+
+__Parameters__
+```python
+terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None)
+```
+
+*   The default value of `signum_list` is `[SIGTERM]`.
+*   If `how` is `os.getpid` or `os.kill`, `os.getpid` and `os.kill` is used.
+    Otherwise, `os.getpgid` and `os.pgkill` is used.
+*   `timeout` has default value `3` seconds. Used to sleep after each signal.
+
+After all signals in `signum_list` are sent, `SIGKILL` is sent.
+
+__Examples__
+```python
+terminate_self(SIGUSR2, SIGTERM)
+# Roughly equal to the following:
+# os.killpg(os.getpgid(), SIGUSR2)
+# time.sleep(3)
+# os.killpg(os.getpgid(), SIGTERM)
+# time.sleep(3)
+# os.killpg(os.getpgid(), SIGKILL)
+# time.sleep(3)
+```
+
+__Examples__
+```python
+terminate_self(SIGUSR2, timeout=1.5, how=os.getpid)
+# Roughly equal to the following:
+# os.kill(os.getpid(), SIGUSR2)
+# time.sleep(1.5)
+# os.kill(os.getpid(), SIGKILL)
+# time.sleep(1.5)
+```
+
+
+## `terminate_children()`
+
+Send signal(s) to childrens created through `command` interface.
+
+__Parameters__
+```python
+terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None)
+```
+
+The usage is the same as `terminate_self()`
+
+
+## `children()`
+
+Return a list of active children.
+
+`children().wait()` could be called to wait for all of them.

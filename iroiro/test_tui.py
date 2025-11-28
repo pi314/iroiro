@@ -4,18 +4,55 @@ import functools
 import threading
 import unittest.mock
 
-from collections import namedtuple
-
 from .lib_test_utils import *
 
 from iroiro import *
 
 
 class TestTypesettingUtils(TestCase):
+    def test_charwidth(self):
+        self.eq(charwidth('t'), 1)
+        self.eq(charwidth('哇'), 2)
+        self.eq(charwidth('嗚'), 2)
+        self.eq(charwidth('😂'), 2)
+
+        with self.raises(TypeError):
+            charwidth('test')
+
     def test_strwidth(self):
         self.eq(strwidth('test'), 4)
         self.eq(strwidth(orange('test')), 4)
         self.eq(strwidth('哇嗚'), 4)
+
+    def test_wrap(self):
+        self.eq(wrap('嗚啦呀哈', 1), ('', '嗚啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 2), ('嗚', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 3), ('嗚', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 4), ('嗚啦', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 5), ('嗚啦', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 6), ('嗚啦呀', '哈'))
+        self.eq(wrap('嗚啦呀哈', 7), ('嗚啦呀', '哈'))
+        self.eq(wrap('嗚啦呀哈', 8), ('嗚啦呀哈', ''))
+        self.eq(wrap('嗚啦呀哈', 9), ('嗚啦呀哈', ''))
+
+        self.eq(wrap('嗚啦呀哈', 1, clip='>'), ('>', '嗚啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 2, clip='>'), ('嗚', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 3, clip='>'), ('嗚>', '啦呀哈'))
+        self.eq(wrap('嗚啦呀哈', 4, clip='>'), ('嗚啦', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 5, clip='>'), ('嗚啦>', '呀哈'))
+        self.eq(wrap('嗚啦呀哈', 6, clip='>'), ('嗚啦呀', '哈'))
+        self.eq(wrap('嗚啦呀哈', 7, clip='>'), ('嗚啦呀>', '哈'))
+        self.eq(wrap('嗚啦呀哈', 8, clip='>'), ('嗚啦呀哈', ''))
+        self.eq(wrap('嗚啦呀哈', 9, clip='>'), ('嗚啦呀哈', ''))
+
+        with self.raises(ValueError):
+            wrap('whatever', 1, clip=1)
+
+        with self.raises(ValueError):
+            wrap('whatever', 1, clip='wa')
+
+        with self.raises(ValueError):
+            wrap('whatever', 1, clip='蛤')
 
     def test_ljust_str(self):
         self.eq(ljust('test', 10), 'test      ')
@@ -163,6 +200,7 @@ def queue_to_list(Q):
 
 
 class TestThreadedSpinner(TestCase):
+    from collections import namedtuple
     Event = namedtuple('Event',
                        ('timestamp', 'tag', 'args', 'callback'),
                        defaults=(None, None, None, None))
@@ -233,7 +271,7 @@ class TestThreadedSpinner(TestCase):
 
     def test_context_manager(self):
         spinner = ThreadedSpinner()
-        spinner.print_function = lambda *args, **kirogs: None
+        spinner.print = lambda *args, **kirogs: None
         with spinner:
             with spinner:
                 spinner.start()
@@ -244,7 +282,7 @@ class TestThreadedSpinner(TestCase):
 
         delay = 1
         spinner = ThreadedSpinner('ENTRY', 'LOOP', 'OUT', delay=delay)
-        spinner.print_function = self.mock_print
+        spinner.print = self.mock_print
 
         event_list = [
                 Event( 0, 'print', ('E', 'meow')),
@@ -757,7 +795,7 @@ class TestGetch(TestCase):
         self.press('測試\033ABCD')
         self.eq(getch(), TE)
         self.eq(getch(), ST)
-        self.eq(getch(), '\33A')
+        self.eq(getch(), '\033A')
         self.eq(getch(), 'B')
         self.eq(getch(), 'C')
         self.eq(getch(), 'D')
@@ -767,3 +805,136 @@ class TestGetch(TestCase):
         self.eq(MY_HOME, KEY_HOME)
         self.press(KEY_HOME.seq)
         self.eq(getch(), MY_HOME)
+
+
+class TestPseudoCanvas(TestCase):
+    def setUp(self):
+        from .lib_test_utils import FakeTerminal
+        self.terminal = FakeTerminal()
+        self.patch('shutil.get_terminal_size', lambda: self.terminal.get_terminal_size())
+
+    def test_data_storing(self):
+        pc = PseudoCanvas()
+        self.true(pc.empty)
+
+        pc.append('wah1')
+        pc.append('wah2')
+        pc.append('wah3')
+        pc.extend(['wah4', 'wah5'])
+        self.eq(len(pc), 5)
+        self.false(pc.empty)
+
+        self.eq(
+                [line for line in iter(pc)],
+                pc.lines,
+                )
+
+        self.eq(pc[1], 'wah2')
+
+        pc[1] = 'wahwah'
+        self.eq(pc[1], 'wahwah')
+
+    def test_auto_append(self):
+        pc = PseudoCanvas()
+        self.true(pc.empty)
+        with self.raises(IndexError):
+            pc[2] = 'line3'
+
+        pc = PseudoCanvas(auto_append=True)
+        self.true(pc.empty)
+        pc[1] = 'line2'
+        self.eq(len(pc), 2)
+
+        pc[4] = 'line5'
+
+        self.eq(pc.lines, [
+            '',
+            'line2',
+            '',
+            '',
+            'line5',
+            ])
+
+    def test_render_basic(self):
+        pc = PseudoCanvas()
+        pc.print = self.terminal.print
+
+        self.eq(self.terminal.lines, [''])
+        pc.render()
+        self.eq(self.terminal.lines, [''])
+
+        data = ['wah1', 'wah2', 'wah3']
+        pc.extend(data)
+
+        self.eq(self.terminal.lines, [''])
+        pc.render()
+        self.eq(self.terminal.lines, data)
+
+        pc[1] = '哇啊'
+        self.eq(self.terminal.lines, data)
+        pc.render()
+        self.eq(self.terminal.lines, ['wah1', '哇啊', 'wah3'])
+
+    def test_render_horizontal_overflow(self):
+        pc = PseudoCanvas()
+        pc.print = self.terminal.print
+        self.eq(self.terminal.width, 80)
+        self.eq(self.terminal.height, 24)
+
+        pc.append('哇' * 50)
+        pc.append('a' + '哇' * 50)
+        pc.append('aa' + '哇' * 50)
+        pc.render()
+        self.eq(self.terminal.lines, [
+            '哇' * 40,
+            'a' + '哇' * 39,
+            'aa' + '哇' * 39,
+            ])
+
+    def test_render_vertical_overflow(self):
+        pc = PseudoCanvas()
+        data = []
+        pc.print = lambda *args, **kwargs: data.append((args, kwargs))
+        pc.print = self.terminal.print
+        self.eq(self.terminal.width, 80)
+        self.eq(self.terminal.height, 24)
+
+        for i in range(50):
+            pc.append('哇 {}'.format(i))
+
+        self.terminal.recording = True
+        pc.render()
+
+        # Check pc sent 24 sequences for each individual line
+        self.eq(len(self.terminal.recording), 24)
+        self.terminal.recording = False
+
+        # Check terminal has 24 lines
+        self.eq(len(self.terminal.lines), 24)
+        for i in range(26, 50):
+            self.eq(self.terminal.lines[i - 26], '哇 {}'.format(i))
+
+        # Check cursor position
+        self.eq(self.terminal.cursor.y, 23)
+
+        # Update a visible line and an invisible line
+        self.terminal.recording = True
+        pc[5] = '哇 5 (new)'
+        pc[40] = '哇 40 (new)'
+        pc.render()
+
+        # The last line is always updated in order to restore cursor position
+        self.eq(self.terminal.recording, [
+            '\r\033[9A',
+            '\r哇 40 (new)\033[K\n',
+            '\r\033[8B',
+            '\r哇 49\033[K'])
+        self.terminal.recording = False
+
+        # Try a hard re-render
+        self.terminal.recording = True
+        pc[40] = '哇 40'
+        pc.render(all=True)
+        self.eq(self.terminal.recording, ['\r\033[23A'] +
+                ['\r哇 {}\033[K\n'.format(i) for i in range(26, 49)] +
+                ['\r哇 49\033[K'])

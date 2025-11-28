@@ -97,6 +97,9 @@ class TestMath(TestCase):
         self.eq(interval(3, 3), [3])
         self.eq(interval(3, 3, close=False), [])
 
+        with self.raises(TypeError):
+            interval(3, 3, True)
+
     def test_resample(self):
         resample = iro.resample
 

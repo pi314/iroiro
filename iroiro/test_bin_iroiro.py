@@ -7,7 +7,7 @@ from .lib_test_utils import *
 import iroiro as iro
 
 
-class TestBinWara(TestCase):
+class TestBinIroiro(TestCase):
     def setUp(self):
         self.prints = []
         self.patch('builtins.print', self.mock_print)
@@ -66,7 +66,7 @@ class TestBinWara(TestCase):
 
     def test_bin_iroiro_recursion_error(self):
         with self.raises(SystemExit):
-            sys.argv = ['iroiro', 'iro', 'iro', 'iro']
+            sys.argv = ['iroiro', 'iroiro', 'iroiro', 'iroiro']
             iro.bin.iroiro.main()
 
         self.true('RecursionError' in '\n'.join(self.stderr))

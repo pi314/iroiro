@@ -1,17 +1,16 @@
+import time
+import os
 import queue
 import subprocess as sub
 import threading
 
-from signal import SIGKILL
+from signal import SIGINT, SIGTERM, SIGKILL
+from collections import UserList
 
 from .lib_itertools import is_iterable
 
 from .internal_utils import exporter
 export, __all__ = exporter()
-
-
-export('TimeoutExpired')
-TimeoutExpired = sub.TimeoutExpired
 
 
 @export
@@ -86,20 +85,14 @@ class stream:
                 raise TypeError('Invalid subscriber value: {}'.format(repr(subscriber)))
 
     def pipe_attached(self):
-        self.pipe_count_lock.acquire()
-        try:
+        with self.pipe_count_lock:
             self.pipe_count += 1
-        finally:
-            self.pipe_count_lock.release()
 
     def pipe_detached(self):
-        self.pipe_count_lock.acquire()
-        try:
+        with self.pipe_count_lock:
             self.pipe_count -= 1
             if self.pipe_count <= 0:
                 self.close()
-        finally:
-            self.pipe_count_lock.release()
 
     def read(self):
         data = self.queue.get()
@@ -162,6 +155,9 @@ class IntegerEvent(threading.Event):
         super().__init__(*args, **kwargs)
         self.value = None
 
+    def __repr__(self):
+        return f'<IntegerEvent {self.value}>'
+
     def set(self, value=None):
         self.value = value
         super().set()
@@ -178,7 +174,8 @@ class IntegerEvent(threading.Event):
 
 @export
 class command:
-    def __init__(self, cmd=None, *,
+    def __init__(self, cmd, *,
+                 cwd=None,
                  stdin=None, stdout=True, stderr=True,
                  encoding='utf8', rstrip='\r\n',
                  bufsize=-1,
@@ -205,6 +202,7 @@ class command:
         self.bufsize = bufsize
         self.rstrip = rstrip
 
+        self.cwd = cwd
         self.env = env
         self.proc = None
         self.thread = None
@@ -264,6 +262,17 @@ class command:
     def killed(self):
         return self.signaled
 
+    @property
+    def alive(self):
+        if self.proc:
+            return self.proc.poll() is None
+        if self.thread:
+            return self.thread.is_alive()
+        return False
+
+    def __repr__(self):
+        return f'<command [{self.cmd[0]}] ({hex(id(self))})>'
+
     def __getitem__(self, idx):
         return [self.stdin, self.stdout, self.stderr][idx]
 
@@ -297,6 +306,7 @@ class command:
             self.thread = threading.Thread(target=worker)
             self.thread.daemon = True
             self.thread.start()
+            _children.append(self)
 
         else:
             if self.encoding == False:
@@ -313,11 +323,12 @@ class command:
                         }
 
             self.proc = sub.Popen(
-                    self.cmd,
+                    self.cmd, cwd=self.cwd,
                     stdin=self.proc_stdin,
                     stdout=self.proc_stdout,
                     stderr=self.proc_stderr,
                     env=self.env, **kwargs)
+            _children.append(self)
 
             def writer(self_stream, proc_stream):
                 for line in self_stream:
@@ -399,19 +410,33 @@ class command:
         if timeout is True:
             timeout = None
         elif timeout is False:
-            return
-
-        # Wait for child process to finish
-        if self.proc:
-            self.proc.wait(timeout)
-            self.returncode = self.proc.returncode
-
-        if self.thread:
-            self.thread.join(timeout)
+            return not self.alive
 
         # Wait too early
         if self.proc is None and self.thread is None:
-            return
+            return False
+
+        # Wait for child process to finish
+        if self.proc:
+            self.exception = None
+            try:
+                self.proc.wait(timeout)
+                self.returncode = self.proc.returncode
+                _children.discard(self)
+            except sub.TimeoutExpired as e:
+                return False
+            except KeyboardInterrupt as e:
+                self.signal(SIGINT)
+                self.exception = e
+            except Exception as e:
+                self.signal(SIGTERM)
+                self.exception = e
+
+        if self.thread:
+            self.thread.join(timeout=timeout)
+            if self.alive:
+                return False
+            _children.discard(self)
 
         if self.exception:
             raise self.exception
@@ -425,39 +450,32 @@ class command:
         for t in self.io_threads:
             t.join()
 
+        return True
+
     def signal(self, signal):
+        if not self.alive:
+            return
         if self.proc:
             self.proc.send_signal(signal)
-
         self.signaled.set(signal)
 
-    def kill(self, signal=SIGKILL):
+    def kill(self, signal=SIGTERM):
         self.signal(signal)
-
         if self.proc:
-            self.proc.wait()
-            for proc_stream in (
-                    self.proc.stdin,
-                    self.proc.stdout,
-                    self.proc.stderr
-                    ):
-                if proc_stream:
-                    proc_stream.close()
-
-            self.returncode = self.proc.returncode
-
+            self.wait()
         if self.thread:
             self.thread.join()
 
 
 @export
-def run(cmd=None, *,
+def run(cmd, *,
+        cwd=None,
         stdin=None, stdout=True, stderr=True,
         encoding='utf8', rstrip='\r\n',
         bufsize=-1,
         env=None,
         wait=True):
-    ret = command(cmd,
+    ret = command(cmd, cwd=cwd,
                   stdin=stdin, stdout=stdout, stderr=stderr,
                   encoding=encoding,
                   rstrip=rstrip, env=env)
@@ -516,3 +534,111 @@ def pipe(istream, *ostreams, start=True):
     if start:
         p.start()
     return p
+
+
+@export
+def is_parant_process_alive():
+    return os.getppid() != 1
+
+
+@export
+def is_parant_process_dead():
+    return not is_parant_process_alive()
+
+
+class Children(UserList):
+    def __init__(self, data=None):
+        super().__init__(data)
+        self.rlock = threading.RLock()
+
+    def __enter__(self):
+        self.rlock.acquire()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.rlock.release()
+
+    def __len__(self):
+        with self:
+            return len(self.data)
+
+    def append(self, child):
+        with self:
+            self.data.append(child)
+
+    def discard(self, child):
+        with self:
+            try:
+                self.data.remove(child)
+            except: # pragma: no cover
+                pass
+
+    def refresh(self):
+        with self:
+            for child in list(self.data):
+                if not child.alive:
+                    self.discard(child)
+
+    def wait(self, timeout=None):
+        snapshot = list(self.data)
+        ret = True
+        for child in snapshot:
+            ret = ret and child.wait(timeout=timeout)
+        return ret
+
+
+_children = Children()
+
+
+@export
+def children():
+    _children.refresh()
+    return _children
+
+
+TERM_TIMEOUT = 3
+
+
+def term_pids(who, signum=tuple(), timeout=TERM_TIMEOUT, how=None):
+    who_list = list(who)
+    if not who_list:
+        return
+
+    signum_list = list(signum)
+    if not signum_list:
+        signum_list = [SIGTERM]
+
+    if how is os.getpid or how is os.kill:
+        how = [lambda x: x, os.kill]
+    else:
+        how = [os.getpgid, os.killpg]
+
+    for signum in signum_list + [SIGKILL]:
+        for who in who_list:
+            if isinstance(who, command):
+                who.signal(signum)
+            else:
+                who = how[0](who)
+                how[1](who, signum)
+        time.sleep(timeout)
+
+
+@export
+def terminate_self(*signum_list, timeout=TERM_TIMEOUT, how=None):
+    term_pids(who=[os.getpid()], signum=signum_list, timeout=timeout, how=how)
+
+
+@export
+def terminate_children(*signum_list, timeout=TERM_TIMEOUT, how=None):
+    term_pids(who=_children, signum=signum_list, timeout=timeout, how=how)
+
+
+@export
+def monitor_parant_process(interval=TERM_TIMEOUT, cond=is_parant_process_alive, callback=terminate_self):
+    def loop():
+        while cond():
+            time.sleep(interval)
+        callback()
+
+    t = threading.Thread(target=loop)
+    t.start()
+    return t

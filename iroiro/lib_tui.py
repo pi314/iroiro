@@ -7,10 +7,33 @@ export, __all__ = exporter()
 
 
 @export
-def strwidth(s):
+def charwidth(c):
     import unicodedata
+    return 1 + (unicodedata.east_asian_width(c) in 'WF')
+
+
+@export
+def strwidth(s):
     from .lib_colors import decolor
-    return sum((1 + (unicodedata.east_asian_width(c) in 'WF')) for c in decolor(s))
+    return sum(charwidth(c) for c in decolor(s))
+
+
+@export
+def wrap(s, width, clip=None):
+    if clip is None:
+        pass
+    elif not isinstance(clip, str) or (len(clip) != 1) or (charwidth(clip) != 1):
+        raise ValueError('clip should be a single width char')
+
+    w = 0
+    for idx, char in enumerate(s):
+        cw = charwidth(char)
+        if w + cw > width:
+            if clip and w + 1 <= width:
+                return (s[:idx] + clip, s[idx:])
+            return (s[:idx], s[idx:])
+        w += cw
+    return (s, '')
 
 
 def lpad(text, padding):
@@ -127,7 +150,7 @@ class ThreadedSpinner:
         self.icon_head = [None, None]
 
         import builtins
-        self.print_function = builtins.print
+        self.print = builtins.print
 
     def __enter__(self):
         if self.thread:
@@ -155,7 +178,7 @@ class ThreadedSpinner:
             self.refresh()
 
     def refresh(self):
-        self.print_function('\r' + self.icon + '\033[K ' + self._text, end='')
+        self.print('\r' + self.icon + '\033[K ' + self._text, end='')
 
     def animate(self):
         import time
@@ -173,7 +196,7 @@ class ThreadedSpinner:
         except StopIteration:
             pass
 
-        self.print_function()
+        self.print()
 
     def start(self):
         if self.thread:
@@ -538,3 +561,84 @@ def getch(timeout=None, encoding='utf8'):
 
     finally:
         termios.tcsetattr(fd, when, orig_term_attr)
+
+
+@export
+class PseudoCanvas:
+    def __init__(self, *, auto_append=False):
+        self.auto_append = auto_append
+        self.lines = []
+        self.dirty = []
+        self.avail_space = 0
+        self.cursor = 0
+
+        import builtins
+        self.print = builtins.print
+
+    def append(self, line=''):
+        self.lines.append(line)
+        self.dirty.append(True)
+
+    def extend(self, lines=[]):
+        for line in lines:
+            self.append(line)
+
+    @property
+    def empty(self):
+        return not self.lines
+
+    def __len__(self):
+        return len(self.lines)
+
+    def __iter__(self):
+        return iter(self.lines)
+
+    def __getitem__(self, idx):
+        return self.lines[idx]
+
+    def __setitem__(self, idx, line):
+        if self.auto_append:
+            for i in range(len(self), idx + 1):
+                self.append()
+
+        self.lines[idx] = line
+        self.dirty[idx] = True
+
+    def render(self, *, all=None):
+        if self.empty:
+            return
+
+        if all:
+            self.dirty = [True for d in self.dirty]
+
+        import shutil
+        term_size = shutil.get_terminal_size()
+        term_width = term_size.columns
+        term_height = term_size.lines
+
+        # Assumed that cursor is always at the end of last line
+        from .lib_itertools import lookahead
+        for (idx, line), is_last in lookahead(enumerate(self.lines)):
+            # Skip non-dirty lines, but always redraw the last line
+            if not self.dirty[idx] and not is_last:
+                continue
+
+            # Skip out-of-screen lines
+            if len(self) > term_height and idx < len(self) - term_height:
+                continue
+
+            # Align cursor position
+            if self.cursor != idx:
+                dist = min(abs(self.cursor - idx), self.avail_space - 1)
+                if dist > 0:
+                    self.print('\r\033[{}{}'.format(dist, 'A' if self.cursor > idx else 'B'), end='')
+
+            # Print content onto screen
+            self.print('\r{}\033[K'.format(wrap(line, term_width)[0]),
+                  end='' if is_last else '\n')
+
+            # Estimate cursor position
+            self.cursor = idx + (not is_last)
+
+            self.avail_space = min(term_height, max(self.avail_space, idx + 1))
+            self.dirty[idx] = False

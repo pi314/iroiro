@@ -1,3 +1,4 @@
+import os
 import threading
 import queue
 
@@ -156,6 +157,11 @@ class TestSubproc(TestCase):
 
         p = run(prog, stdin='line', stdout=False, stderr=False)
 
+        p = command(['iroiro', 'arg1', 'arg2'])
+        self.true('command' in repr(p))
+        self.true(hex(id(p)) in repr(p))
+        self.true('iroiro' in repr(p))
+
     def test_stdout(self):
         p = run('seq 5'.split())
         self.eq(p.stdout.lines, '1 2 3 4 5'.split())
@@ -201,9 +207,9 @@ class TestSubproc(TestCase):
         self.eq(p.returncode, 1)
 
     def test_invalid_cmd(self):
-        with self.raises(ValueError):
+        with self.raises(TypeError):
             p = command()
-        with self.raises(ValueError):
+        with self.raises(TypeError):
             p = run()
 
         for i in ([], True, 3, None, queue.Queue()):
@@ -370,18 +376,28 @@ class TestSubproc(TestCase):
         # If this test fails, make sure to check the initial input
         self.eq(p.stdout.lines[-1], 1, p.stdin.lines[0])
 
-    def test_wait_false(self):
+    def test_wait_timeouts(self):
         checkpoint = self.checkpoint()
 
         def prog(proc, *args):
             checkpoint.wait()
 
         p = command(prog)
+        self.false(p.alive)
+
         p.run(wait=False)
-        checkpoint.check(False)
-        p.wait(False)
-        checkpoint.check(False)
+        self.true(p.alive)
+
+        self.false(p.wait(False))
+        self.true(p.alive)
+
+        self.false(p.wait(timeout=0.01))
+        self.true(p.alive)
+
         checkpoint.set()
+        self.true(p.wait())
+        self.true(p.wait(False))
+        self.false(p.alive)
 
     def test_wait_invalid_types(self):
         def prog(proc, *args): # pragma: no cover
@@ -393,15 +409,12 @@ class TestSubproc(TestCase):
         self.eq(p.proc, None)
         self.eq(p.thread, None)
 
-    def test_timeout(self):
+    def test_run_timeout(self):
         import time
-
         p = command(['sleep', 3])
         t1 = time.time()
-        try:
-            p.run(wait=0.1)
-        except TimeoutExpired:
-            pass
+        p.run(wait=0.1)
+        self.true(p.alive)
         t2 = time.time()
         self.le(t2 - t1, 1)
         p.kill()
@@ -430,6 +443,7 @@ class TestSubproc(TestCase):
         p.signal(signal.SIGINT)
         p.wait()
         self.eq(p.signaled, signal.SIGINT)
+        self.eq(repr(p.signaled), '<IntegerEvent 2>')
 
     def test_kill_callable(self):
         checkpoint = self.checkpoint()
@@ -446,14 +460,66 @@ class TestSubproc(TestCase):
 
         import signal
         checkpoint.check()
-        self.eq(p.signaled, signal.SIGKILL)
+        self.eq(p.signaled, signal.SIGTERM)
 
         p.signaled.clear()
         self.eq(p.signaled, False)
         self.eq(p.signaled, None)
 
-        p.kill(signal.SIGTERM)
+        p.kill(signal.SIGKILL)
+        self.eq(p.signaled, None)
+
+    def test_kill_sigint_pass_to_child_process(self):
+        import signal
+
+        class MockPopen:
+            def __init__(self, *args, **kwargs):
+                self.args = args
+                self.kwargs = kwargs
+                self.received_signal = None
+                self.returncode = None
+
+                class MockStream:
+                    def __init__(self):
+                        pass
+                    def __iter__(self):
+                        return iter([])
+                    def close(self):
+                        pass
+                self.stdin = MockStream()
+                self.stdout = MockStream()
+                self.stderr = MockStream()
+
+            def wait(self, timeout=None):
+                if not self.received_signal:
+                    raise exception
+
+            def send_signal(self, signal):
+                self.received_signal = signal
+                self.returncode = -int(signal)
+
+            def poll(self):
+                return self.returncode or None
+
+        self.patch('subprocess.Popen', MockPopen)
+
+        exception = KeyboardInterrupt()
+        p = command(['sleep', '86400'])
+        with self.raises(KeyboardInterrupt):
+            p.run()
+            self.fail()
+        self.eq(p.signaled, signal.SIGINT)
+        self.eq(p.proc.received_signal, signal.SIGINT)
+        p.kill()
+
+        exception = OSError()
+        p = command(['sleep', '86400'])
+        with self.raises(OSError):
+            p.run()
+            self.fail()
         self.eq(p.signaled, signal.SIGTERM)
+        self.eq(p.proc.received_signal, signal.SIGTERM)
+        p.kill()
 
     def test_read_stdout_twice(self):
         ans = '1 2 3 4 5'.split()
@@ -633,3 +699,152 @@ class TestPipe(TestCase):
         pp2.join()
 
         self.true(o.closed)
+
+class TestChildrenManagement(TestCase):
+    def patch_pid_funcions(self):
+        import random
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+
+        self.log = []
+
+        def mock_sleep(duration):
+            self.log.append(('time.sleep', duration))
+        self.patch('time.sleep', mock_sleep)
+
+        self.pid = random.randrange(10000, 65536)
+        def mock_getpid():
+            return self.pid
+        self.patch('os.getpid', mock_getpid)
+
+        def mock_getpgid(pid):
+            self.eq(pid, self.pid)
+            return self.pid
+        self.patch('os.getpgid', mock_getpgid)
+
+        def mock_kill(pid, signum):
+            self.log.append(('os.kill', (pid, signum)))
+        self.patch('os.kill', mock_kill)
+
+        def mock_killpg(pgid, signum):
+            self.log.append(('os.killpg', (pgid, signum)))
+        self.patch('os.killpg', mock_killpg)
+
+    def test_is_parant_process_alive(self):
+        self.true(is_parant_process_alive())
+        self.false(is_parant_process_dead())
+
+    def test_term_self_without_signum(self):
+        self.patch_pid_funcions()
+
+        from signal import SIGUSR1, SIGUSR2, SIGKILL, SIGTERM
+        terminate_self()
+        self.eq(self.log, [
+            ('os.killpg', (self.pid, SIGTERM)),
+            ('time.sleep', 3),
+            ('os.killpg', (self.pid, SIGKILL)),
+            ('time.sleep', 3),
+            ])
+
+    def test_term_self_with_signum(self):
+        self.patch_pid_funcions()
+
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+        terminate_self(SIGUSR1, SIGUSR2)
+        self.eq(self.log, [
+            ('os.killpg', (self.pid, SIGUSR1)),
+            ('time.sleep', 3),
+            ('os.killpg', (self.pid, SIGUSR2)),
+            ('time.sleep', 3),
+            ('os.killpg', (self.pid, SIGKILL)),
+            ('time.sleep', 3),
+            ])
+
+    def test_term_self_with_how(self):
+        self.patch_pid_funcions()
+
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+        terminate_self(SIGUSR2, how=os.getpid)
+        self.eq(self.log, [
+            ('os.kill', (self.pid, SIGUSR2)),
+            ('time.sleep', 3),
+            ('os.kill', (self.pid, SIGKILL)),
+            ('time.sleep', 3),
+            ])
+
+    def test_term_self_with_timeout(self):
+        self.patch_pid_funcions()
+
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+        terminate_self(SIGUSR1, SIGUSR2, timeout=86400)
+        self.eq(self.log, [
+            ('os.killpg', (self.pid, SIGUSR1)),
+            ('time.sleep', 86400),
+            ('os.killpg', (self.pid, SIGUSR2)),
+            ('time.sleep', 86400),
+            ('os.killpg', (self.pid, SIGKILL)),
+            ('time.sleep', 86400),
+            ])
+
+    def test_term_children_when_no_children(self):
+        self.patch_pid_funcions()
+
+        self.eq(children(), [])
+
+        from signal import SIGUSR1, SIGUSR2, SIGKILL
+        terminate_children(SIGUSR1, SIGUSR2)
+        self.eq(self.log, [])
+
+    def test_term_children(self):
+        from signal import SIGTERM, SIGKILL
+
+        self.eq(children(), [])
+
+        import time
+        def prog(proc, *args):
+            proc.signaled.wait()
+        p1 = command(prog)
+        p1.run(wait=False)
+        self.eq(children(), [p1])
+
+        p2 = command(['sleep', 86400])
+        p2.run(wait=False)
+        self.eq(children(), [p1, p2])
+
+        terminate_children(timeout=0.1)
+        self.false(p1.alive)
+        self.false(p2.alive)
+        self.eq(p1.signaled, SIGTERM)
+        self.eq(p2.signaled, SIGTERM)
+        self.eq(children(), [])
+
+    def test_children_wait(self):
+        from signal import SIGUSR1
+
+        self.eq(children(), [])
+        def prog(proc, *args):
+            proc.signaled.wait()
+
+        p1 = command(prog)
+        p1.run(wait=False)
+        self.eq(children(), [p1])
+
+        self.false(children().wait(timeout=0.01))
+        p1.signal(SIGUSR1)
+        self.true(children().wait(timeout=0.01))
+
+    def test_monitor_thread(self):
+        parent_proc_alive = True
+        def mock_is_parant_process_alive():
+            return parent_proc_alive
+
+        callback_checkpoint = self.checkpoint()
+        def mock_terminate_self():
+            callback_checkpoint.set()
+
+        t = monitor_parant_process(interval=0.1,
+                                   cond=mock_is_parant_process_alive,
+                                   callback=mock_terminate_self)
+
+        parent_proc_alive = False
+        t.join()
+        callback_checkpoint.check()

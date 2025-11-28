@@ -106,7 +106,7 @@ class vector:
 
 
 @export
-def interval(a, b, close=True):
+def interval(a, b, *, close=True):
     direction = sgn(b - a)
     if direction == 0:
         return [a] if close else []
