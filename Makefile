@@ -54,8 +54,8 @@ publish:
 HTMLDOC := htmldoc
 GFM := scripts/gfm
 
-.PHONY: htmldoc
-htmldoc: ${HTMLDOC}/README.html $(patsubst doc/%.md,${HTMLDOC}/%.html,$(wildcard doc/*.md))
+.PHONY: doc
+doc: ${HTMLDOC}/README.html $(patsubst doc/%.md,${HTMLDOC}/%.html,$(wildcard doc/*.md))
 
 ${HTMLDOC}/%.html: %.md Makefile ${GFM}
 	@[ -d '${HTMLDOC}' ] || mkdir '${HTMLDOC}'
